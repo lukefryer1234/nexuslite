@@ -1,0 +1,49 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment files with secrets
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+build/
+*.log
+
+# Foundry artifacts (keep scripts, exclude broadcast results)
+server/scripts/foundry-crime-scripts/broadcast/
+server/scripts/foundry-crime-scripts/cache/
+server/scripts/foundry-crime-scripts/out/
+server/scripts/foundry-travel-scripts/broadcast/
+server/scripts/foundry-travel-scripts/cache/
+server/scripts/foundry-travel-scripts/out/
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Nexus Lite data (encrypted passwords, etc.)
+.nexus-lite/
+
+# Keystores (never commit!)
+keystores/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Temporary files
+tmp/
+temp/

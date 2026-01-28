@@ -1,0 +1,378 @@
+/* CrimeResultsPanel.css - Terminal-themed crime results */
+@import '../styles/design-system.css';
+
+.crime-results-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    margin-top: var(--spacing-xl);
+    font-family: var(--font-mono);
+}
+
+.crp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.crp-title {
+    color: var(--text-label);
+    font-size: var(--font-size-sm);
+    letter-spacing: 1px;
+}
+
+.crp-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+.crp-select {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-input);
+    color: var(--text-value);
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-family: inherit;
+    font-size: var(--font-size-xs);
+}
+
+.crp-refresh {
+    background: transparent;
+    border: 1px solid var(--border-input);
+    color: var(--text-muted);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    min-width: 28px;
+}
+
+.crp-refresh:hover {
+    background: var(--bg-hover);
+}
+
+.crp-refresh:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.crp-body {
+    padding: var(--spacing-md);
+}
+
+.crp-totals {
+    display: flex;
+    gap: var(--spacing-xl);
+    padding: var(--spacing-md);
+    background: var(--bg-header);
+    margin-bottom: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.crp-stat {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: baseline;
+}
+
+.crp-stat-label {
+    color: var(--text-dim);
+    font-size: var(--font-size-xs);
+}
+
+.crp-stat-value {
+    color: var(--text-value);
+    font-size: var(--font-size-base);
+    font-weight: 600;
+}
+
+.crp-stat-value.success {
+    color: var(--color-success);
+}
+
+.crp-stat-value.mafia {
+    color: #ff6b6b;
+}
+
+.crp-stat-value.xp {
+    color: #4dabf7;
+}
+
+.crp-stat-value.fail {
+    color: var(--color-error);
+}
+
+.crp-wallet-group {
+    margin-bottom: var(--spacing-sm);
+    background: var(--bg-header);
+    border: 1px solid var(--border-primary);
+}
+
+.crp-wallet-header {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--bg-primary);
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.crp-char-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--bg-primary);
+}
+
+.crp-char-row:last-child {
+    border-bottom: none;
+}
+
+.crp-char-identity {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.crp-chain-badge {
+    font-size: var(--font-size-xs);
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: rgba(168, 85, 247, 0.15);
+}
+
+.crp-chain-badge.pls {
+    background: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+.crp-chain-badge.bnb {
+    background: rgba(241, 196, 15, 0.15);
+    color: #f1c40f;
+}
+
+.crp-char-name {
+    font-size: var(--font-size-sm);
+    color: var(--text-value);
+    font-weight: 500;
+}
+
+.crp-char-stats-row {
+    display: flex;
+    gap: var(--spacing-lg);
+    font-size: var(--font-size-xs);
+    flex-wrap: wrap;
+}
+
+.crp-stat-item {
+    display: flex;
+    gap: 4px;
+    align-items: baseline;
+}
+
+.crp-stat-item .label {
+    color: var(--text-dim);
+}
+
+.crp-stat-item .value {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.crp-stat-item.success .value {
+    color: var(--color-success);
+}
+
+.crp-stat-item.fail .value {
+    color: var(--color-error);
+}
+
+.crp-stat-item.xp .value {
+    color: #4dabf7;
+}
+
+.crp-player-name {
+    color: var(--text-value);
+    font-weight: 600;
+    margin-left: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+}
+
+.crp-wallet-name {
+    font-weight: 600;
+    color: var(--text-label);
+}
+
+.crp-player-level {
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: var(--font-size-xs);
+    margin-left: var(--spacing-sm);
+}
+
+.crp-player-stats-row {
+    display: flex;
+    gap: var(--spacing-md);
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: rgba(0, 0, 0, 0.15);
+    font-size: var(--font-size-xs);
+    flex-wrap: wrap;
+}
+
+.crp-pstat {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    color: var(--text-dim);
+}
+
+.crp-pstat .icon {
+    font-size: 10px;
+}
+
+.crp-pstat.mafia {
+    color: #ff6b6b;
+}
+
+.crp-pstat.travel {
+    color: #4dabf7;
+}
+
+.crp-pstat.jail {
+    color: #ff6b6b;
+    font-weight: bold;
+    background: rgba(255, 107, 107, 0.2);
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+.crp-stat-item.mafia .value {
+    color: #ff6b6b;
+}
+
+.crp-char-skills {
+    display: flex;
+    gap: var(--spacing-md);
+    font-size: var(--font-size-xs);
+    margin-top: 2px;
+}
+
+.crp-char-skills .skill {
+    color: var(--text-dim);
+    display: flex;
+    gap: 2px;
+    align-items: center;
+}
+
+.crp-wallet-chars {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+.char-skill {
+    font-size: var(--font-size-xs);
+    color: var(--text-dim);
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.char-skill .skill {
+    padding: 1px 4px;
+    border-radius: 2px;
+}
+
+.char-skill .skill.crime {
+    background: rgba(255, 107, 107, 0.15);
+    color: #ff6b6b;
+}
+
+.char-skill .skill.kill {
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+}
+
+.crp-wallet-stats {
+    display: flex;
+    gap: var(--spacing-lg);
+    font-size: var(--font-size-xs);
+}
+
+.crp-wallet-stats .stat {
+    color: var(--text-dim);
+}
+
+.crp-wallet-stats .stat.success {
+    color: var(--color-success);
+}
+
+.crp-wallet-stats .stat.mafia {
+    color: #ff6b6b;
+}
+
+.crp-wallet-stats .stat.xp {
+    color: #4dabf7;
+}
+
+.crp-wallet-stats .stat.fail {
+    color: var(--color-error);
+}
+
+.crp-empty {
+    color: var(--text-dim);
+    text-align: center;
+    padding: var(--spacing-3xl);
+    font-size: var(--font-size-sm);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+}
+
+.crp-empty-icon {
+    font-size: 2rem;
+    opacity: 0.5;
+}
+
+.crp-empty-text {
+    color: var(--text-muted);
+}
+
+.crp-empty-hint {
+    color: var(--text-dim);
+    font-size: var(--font-size-xs);
+}
+
+.crp-empty.crp-loading {
+    color: var(--color-info-text);
+}
+
+.crp-empty.crp-error {
+    color: var(--color-error-text);
+}
+
+.crp-empty.crp-error button {
+    background: var(--bg-error);
+    border: 1px solid var(--border-error);
+    color: var(--color-error-text);
+    padding: var(--spacing-xs) var(--spacing-md);
+    cursor: pointer;
+    margin-left: var(--spacing-sm);
+}
+
+@media (max-width: 600px) {
+    .crp-totals {
+        flex-direction: column;
+        gap: var(--spacing-sm);
+    }
+
+    .crp-wallet-stats {
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+    }
+}

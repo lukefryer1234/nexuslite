@@ -1,0 +1,100 @@
+.wallet-results-panel {
+    background: rgba(0, 20, 40, 0.6);
+    border: 1px solid rgba(0, 150, 255, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.wallet-results-panel .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.wallet-results-panel h3 {
+    margin: 0;
+    color: #00d4ff;
+    font-size: 1.1rem;
+}
+
+.wallet-filter {
+    background: rgba(0, 50, 100, 0.5);
+    border: 1px solid rgba(0, 150, 255, 0.4);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.wallet-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+}
+
+.wallet-card {
+    background: rgba(0, 40, 80, 0.5);
+    border: 1px solid rgba(0, 150, 255, 0.2);
+    border-radius: 6px;
+    padding: 12px;
+    transition: border-color 0.2s;
+}
+
+.wallet-card:hover {
+    border-color: rgba(0, 200, 255, 0.5);
+}
+
+.wallet-name {
+    font-weight: bold;
+    color: #00d4ff;
+    font-size: 1rem;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(0, 150, 255, 0.2);
+}
+
+.wallet-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    padding: 4px 0;
+}
+
+.stat-label {
+    color: #aaa;
+    flex: 1;
+}
+
+.stat-success {
+    color: #4ade80;
+    margin-right: 12px;
+    min-width: 40px;
+    text-align: right;
+}
+
+.stat-fail {
+    color: #f87171;
+    min-width: 40px;
+    text-align: right;
+}
+
+.wallet-last-activity {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0, 150, 255, 0.2);
+    font-size: 0.8rem;
+    color: #888;
+}
+
+.wallet-last-activity .time {
+    color: #aaa;
+}

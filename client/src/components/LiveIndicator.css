@@ -1,0 +1,87 @@
+/* LiveIndicator - Status and update time display */
+
+.live-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(0, 255, 0, 0.15);
+    border-radius: 20px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+}
+
+.live-indicator.compact {
+    padding: 4px 8px;
+    font-size: 10px;
+    gap: 6px;
+}
+
+/* Status Dot */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--dot-color, #0f0);
+    box-shadow: 0 0 8px var(--dot-color, #0f0);
+    flex-shrink: 0;
+}
+
+.live-indicator.compact .status-dot {
+    width: 6px;
+    height: 6px;
+}
+
+.status-dot.pulse {
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 0 8px var(--dot-color, #0f0);
+    }
+
+    50% {
+        opacity: 0.6;
+        transform: scale(0.85);
+        box-shadow: 0 0 4px var(--dot-color, #0f0);
+    }
+}
+
+/* Status Text */
+.status-text {
+    color: #0f0;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Refresh Countdown */
+.refresh-countdown {
+    color: #666;
+    padding-left: 8px;
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Status-specific styles */
+.live-indicator.live {
+    border-color: rgba(0, 255, 0, 0.2);
+}
+
+.live-indicator.connecting {
+    border-color: rgba(241, 196, 15, 0.3);
+}
+
+.live-indicator.paused {
+    border-color: rgba(136, 136, 136, 0.2);
+    opacity: 0.7;
+}
+
+.live-indicator.error {
+    border-color: rgba(255, 85, 85, 0.3);
+    background: rgba(255, 85, 85, 0.05);
+}

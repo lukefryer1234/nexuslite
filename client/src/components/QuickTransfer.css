@@ -1,0 +1,245 @@
+/* QuickTransfer.css - Fast native coin transfers */
+@import '../styles/design-system.css';
+
+.quick-transfer {
+    background: var(--bg-card);
+    border: 1px solid var(--border-primary);
+    margin-bottom: var(--spacing-xl);
+}
+
+.quick-transfer.loading {
+    padding: var(--spacing-2xl);
+    text-align: center;
+    color: var(--text-dim);
+}
+
+.qt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.qt-header h3 {
+    margin: 0;
+    font-size: var(--font-size-base);
+    color: var(--text-label);
+    font-weight: normal;
+}
+
+.qt-refresh {
+    background: transparent;
+    border: 1px solid var(--border-input);
+    color: var(--text-muted);
+    padding: var(--spacing-xs) var(--spacing-md);
+    font-family: inherit;
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+}
+
+.qt-refresh:hover {
+    background: var(--bg-hover);
+}
+
+.qt-refresh:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.qt-empty {
+    padding: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-dim);
+    font-size: var(--font-size-sm);
+}
+
+/* Wallet Balances Grid */
+.qt-balances-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.qt-wallet-card {
+    background: var(--bg-header);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border: 1px solid var(--border-input);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.qt-wallet-card .wallet-name {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.qt-wallet-card .wallet-balances {
+    display: flex;
+    gap: var(--spacing-md);
+    font-size: var(--font-size-xs);
+}
+
+.qt-wallet-card .balance {
+    padding: 2px 6px;
+    border-radius: 2px;
+}
+
+.qt-wallet-card .balance.pls {
+    background: rgba(220, 50, 50, 0.15);
+    color: #ff6666;
+}
+
+.qt-wallet-card .balance.bnb {
+    background: rgba(240, 185, 11, 0.15);
+    color: #f0b90b;
+}
+
+.qt-wallet-card .balance.low {
+    animation: pulse-warning 1.5s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Transfer Form */
+.qt-form {
+    padding: var(--spacing-lg);
+}
+
+.qt-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+}
+
+.qt-row label {
+    min-width: 60px;
+    color: #aaa;
+    font-size: var(--font-size-sm);
+}
+
+.qt-row select {
+    flex: 1;
+    background: var(--bg-header);
+    border: 1px solid var(--border-input);
+    color: #fff;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+}
+
+.chain-toggle {
+    display: flex;
+    gap: 0;
+}
+
+.chain-toggle button {
+    background: var(--bg-header);
+    border: 1px solid var(--border-input);
+    color: #888;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+}
+
+.chain-toggle button:first-child {
+    border-right: none;
+}
+
+.chain-toggle button.active {
+    background: rgba(50, 180, 100, 0.3);
+    border-color: #32b464;
+    color: #4ade80;
+}
+
+.amount-input {
+    flex: 1;
+    display: flex;
+    gap: 0;
+}
+
+.amount-input input {
+    flex: 1;
+    background: var(--bg-header);
+    border: 1px solid var(--border-input);
+    border-right: none;
+    color: #fff;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+}
+
+.amount-input input:focus {
+    outline: none;
+    border-color: var(--border-success);
+}
+
+.max-btn {
+    background: var(--bg-header);
+    border: 1px solid var(--border-input);
+    color: #6ee7ff;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: inherit;
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+}
+
+.max-btn:hover {
+    background: var(--bg-hover);
+}
+
+.qt-send-btn {
+    width: 100%;
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: transparent;
+    border: 1px solid #32b464;
+    color: #4ade80;
+    font-family: inherit;
+    font-size: var(--font-size-base);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.qt-send-btn:hover:not(:disabled) {
+    background: var(--bg-success);
+}
+
+.qt-send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.qt-result {
+    margin-top: var(--spacing-md);
+    padding: var(--spacing-md);
+    font-size: var(--font-size-sm);
+}
+
+.qt-result.success {
+    background: var(--bg-success);
+    border: 1px solid var(--border-success);
+    color: var(--color-success-text);
+}
+
+.qt-result.error {
+    background: var(--bg-error);
+    border: 1px solid var(--border-error);
+    color: var(--color-error);
+}
+
+.qt-result .tx-hash {
+    opacity: 0.7;
+    font-size: var(--font-size-xs);
+}
