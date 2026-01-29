@@ -29,6 +29,29 @@ const bnbEndCities = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB
 const plsTravelTypes = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_TRAVEL_TYPE ? process.env.PLS_TRAVEL_TYPE.split(",").map((type) => parseInt(type.trim()) || 0) : []) : [];
 const bnbTravelTypes = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_TRAVEL_TYPE ? process.env.BNB_TRAVEL_TYPE.split(",").map((type) => parseInt(type.trim()) || 0) : []) : [];
 
+// Valid cities for travel - only base cities 0-5 where nick car works
+// Extended cities (6-29) don't support nick car, so we restrict travel to base cities only
+const VALID_CITIES = [0, 1, 2, 3, 4, 5]; // New York, Chicago, Las Vegas, Detroit, Los Angeles, Miami
+
+// Validate destination cities
+const validateCities = (endCities, chainName) => {
+  for (let i = 0; i < endCities.length; i++) {
+    if (!VALID_CITIES.includes(endCities[i])) {
+      console.error(`Error: [${chainName}] Invalid destination city ${endCities[i]}. Only base cities 0-5 are allowed.`);
+      console.error(`Valid cities: 0=New York, 1=Chicago, 2=Las Vegas, 3=Detroit, 4=Los Angeles, 5=Miami`);
+      process.exit(1);
+    }
+  }
+};
+
+if (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) {
+  validateCities(plsEndCities, 'PLS');
+}
+if (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) {
+  validateCities(bnbEndCities, 'BNB');
+}
+
+
 // Validate inputs
 if (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) {
   if (plsKeystoreNames.length === 0) {

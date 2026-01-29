@@ -2,38 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API_BASE from '../config/api';
 import './TravelSettingsPanel.css';
 
-// City options (comprehensive list from game - all 30 cities)
+// City options - only base cities (0-5) where nick car works
+// Extended cities (6-29) don't support nick car action
 const CITIES = [
     { id: 0, name: 'New York' },
     { id: 1, name: 'Chicago' },
     { id: 2, name: 'Las Vegas' },
     { id: 3, name: 'Detroit' },
     { id: 4, name: 'Los Angeles' },
-    { id: 5, name: 'Miami' },
-    { id: 6, name: 'Atlantic City' },
-    { id: 7, name: 'Philadelphia' },
-    { id: 8, name: 'Boston' },
-    { id: 9, name: 'San Francisco' },
-    { id: 10, name: 'Houston' },
-    { id: 11, name: 'Dallas' },
-    { id: 12, name: 'Seattle' },
-    { id: 13, name: 'Denver' },
-    { id: 14, name: 'Phoenix' },
-    { id: 15, name: 'Atlanta' },
-    { id: 16, name: 'New Orleans' },
-    { id: 17, name: 'Kansas City' },
-    { id: 18, name: 'St. Louis' },
-    { id: 19, name: 'Minneapolis' },
-    { id: 20, name: 'Portland' },
-    { id: 21, name: 'San Diego' },
-    { id: 22, name: 'Tampa' },
-    { id: 23, name: 'Cleveland' },
-    { id: 24, name: 'Pittsburgh' },
-    { id: 25, name: 'Baltimore' },
-    { id: 26, name: 'Washington DC' },
-    { id: 27, name: 'Nashville' },
-    { id: 28, name: 'Memphis' },
-    { id: 29, name: 'Charlotte' }
+    { id: 5, name: 'Miami' }
 ];
 
 // Travel types (vehicles)
