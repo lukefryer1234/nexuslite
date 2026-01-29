@@ -90,19 +90,34 @@ const MAP_CONTRACTS = {
     bnb: '0x1c88060e4509c59b4064A7a9818f64AeC41ef19E'
 };
 
-// City names mapping
+// City names mapping (matches game contract)
 const CITY_NAMES = {
-    0: 'Chicago',
-    1: 'Detroit',
-    2: 'New York',
-    3: 'Las Vegas',
-    4: 'Philadelphia',
-    5: 'Baltimore',
-    6: 'Palermo',
-    7: 'Naples'
+    0: 'New York',
+    1: 'Chicago',
+    2: 'Las Vegas',
+    3: 'Detroit',
+    4: 'Los Angeles',
+    5: 'Miami'
+};
+
+// Inventory (ERC1155) contract addresses for checking item ownership
+const INVENTORY_CONTRACTS = {
+    pls: '0x2c60de22Ec20CcE72245311579c4aD9e5394Adc4',
+    bnb: '0x2CB8352Be090846d4878Faa92825188D7bf50654'
+};
+
+// Transport item IDs in the inventory
+const TRANSPORT_ITEMS = {
+    // Car/vehicle item IDs (21-28 are vehicles in the game)
+    CAR: [21, 22, 23, 24, 25, 26, 28], // Motorcycle, Sedan, Sports Car, Armored, Coupe, Luxury, Jalopy
+    // Airplane item ID (Douglas M3 is item 27)
+    AIRPLANE: [27],
+    // Train is always available (no item needed)
+    TRAIN: []
 };
 
 // Get player's current city on both chains
+// The contract uses selector 0x7c5dc38a for getCity(address) - we use raw calldata to ensure correct encoding
 router.get('/city/:address', async (req, res) => {
     const { address } = req.params;
     
@@ -117,39 +132,161 @@ router.get('/city/:address', async (req, res) => {
     };
 
     const rpcUrls = getRpcUrls();
+    logger.info('Detecting city for address', { address, rpcUrls });
+
+    // Build raw calldata: selector 0x7c5dc38a + padded address
+    const addressPadded = address.toLowerCase().replace('0x', '').padStart(64, '0');
+    const calldata = `0x7c5dc38a${addressPadded}`;
 
     // Query PulseChain
     try {
-        const { stdout } = await execAsync(
-            `${foundryBin}/cast call ${MAP_CONTRACTS.pls} "getCity(address)(uint256)" ${address} --rpc-url ${rpcUrls.pls}`,
-            { timeout: 10000 }
-        );
-        const cityId = parseInt(stdout.trim());
+        const cmd = `${foundryBin}/cast call ${MAP_CONTRACTS.pls} "${calldata}" --rpc-url ${rpcUrls.pls}`;
+        logger.debug('PLS city query', { cmd });
+        const { stdout, stderr } = await execAsync(cmd, { timeout: 10000 });
+        if (stderr) logger.warn('PLS stderr', { stderr: stderr.substring(0, 200) });
+        const cityId = parseInt(stdout.trim(), 16); // cast returns hex for uint256
+        logger.info('PLS city detected', { address, cityId, raw: stdout.trim() });
         results.pls = {
             success: true,
             cityId,
             cityName: CITY_NAMES[cityId] || `Unknown (${cityId})`
         };
     } catch (err) {
-        results.pls = { success: false, error: err.message?.substring(0, 100) };
+        // Reverts usually mean player not registered
+        const isRevert = err.message?.includes('reverted');
+        logger.warn('PLS city detection failed', { 
+            address, 
+            error: err.message?.substring(0, 150),
+            isRevert
+        });
+        results.pls = { 
+            success: false, 
+            error: isRevert ? 'Player not registered on PulseChain' : err.message?.substring(0, 100) 
+        };
     }
 
     // Query BNB Chain
     try {
-        const { stdout } = await execAsync(
-            `${foundryBin}/cast call ${MAP_CONTRACTS.bnb} "getCity(address)(uint256)" ${address} --rpc-url ${rpcUrls.bnb}`,
-            { timeout: 10000 }
-        );
-        const cityId = parseInt(stdout.trim());
+        const cmd = `${foundryBin}/cast call ${MAP_CONTRACTS.bnb} "${calldata}" --rpc-url ${rpcUrls.bnb}`;
+        logger.debug('BNB city query', { cmd });
+        const { stdout, stderr } = await execAsync(cmd, { timeout: 10000 });
+        if (stderr) logger.warn('BNB stderr', { stderr: stderr.substring(0, 200) });
+        const cityId = parseInt(stdout.trim(), 16); // cast returns hex for uint256
+        logger.info('BNB city detected', { address, cityId, raw: stdout.trim() });
         results.bnb = {
             success: true,
             cityId,
             cityName: CITY_NAMES[cityId] || `Unknown (${cityId})`
         };
     } catch (err) {
-        results.bnb = { success: false, error: err.message?.substring(0, 100) };
+        const isRevert = err.message?.includes('reverted');
+        logger.warn('BNB city detection failed', { 
+            address, 
+            error: err.message?.substring(0, 150),
+            isRevert
+        });
+        results.bnb = { 
+            success: false, 
+            error: isRevert ? 'Player not registered on BNB Chain' : err.message?.substring(0, 100) 
+        };
     }
 
+    logger.info('City detection complete', { address, results });
+    res.json(results);
+});
+
+// Get player's available transport on both chains
+// Uses ERC1155 balanceOf to check inventory for cars/airplane
+router.get('/transport/:address', async (req, res) => {
+    const { address } = req.params;
+    
+    if (!address || !address.startsWith('0x')) {
+        return res.status(400).json({ success: false, error: 'Invalid address' });
+    }
+
+    const foundryBin = process.env.FOUNDRY_BIN || process.env.HOME + '/.foundry/bin';
+    const results = {
+        pls: { success: false, hasTrain: true, hasCar: false, hasAirplane: false, bestTransport: 0 },
+        bnb: { success: false, hasTrain: true, hasCar: false, hasAirplane: false, bestTransport: 0 }
+    };
+
+    const rpcUrls = getRpcUrls();
+    logger.info('Detecting transport for address', { address });
+
+    // Build ERC1155 balanceOf(address,uint256) selector: 0x00fdd58e
+    const addressPadded = address.toLowerCase().replace('0x', '').padStart(64, '0');
+
+    // Function to check if player owns any item from a list
+    const checkItemOwnership = async (chain, itemIds) => {
+        const rpc = rpcUrls[chain];
+        const contract = INVENTORY_CONTRACTS[chain];
+        
+        for (const itemId of itemIds) {
+            try {
+                // balanceOf(address, uint256) selector: 0x00fdd58e
+                const itemIdHex = itemId.toString(16).padStart(64, '0');
+                const calldata = `0x00fdd58e${addressPadded}${itemIdHex}`;
+                const cmd = `${foundryBin}/cast call ${contract} "${calldata}" --rpc-url ${rpc}`;
+                const { stdout } = await execAsync(cmd, { timeout: 10000 });
+                const balance = parseInt(stdout.trim(), 16);
+                if (balance > 0) {
+                    logger.debug(`${chain}: Found item ${itemId} with balance ${balance}`);
+                    return true;
+                }
+            } catch (err) {
+                // Item check failed, continue to next
+            }
+        }
+        return false;
+    };
+
+    // Check PulseChain transport
+    try {
+        const hasAirplane = await checkItemOwnership('pls', TRANSPORT_ITEMS.AIRPLANE);
+        const hasCar = await checkItemOwnership('pls', TRANSPORT_ITEMS.CAR);
+        
+        // Best transport: 2=airplane, 1=car, 0=train
+        let bestTransport = 0; // Train (always available)
+        if (hasCar) bestTransport = 1;
+        if (hasAirplane) bestTransport = 2;
+        
+        results.pls = {
+            success: true,
+            hasTrain: true,
+            hasCar,
+            hasAirplane,
+            bestTransport
+        };
+        logger.info('PLS transport detected', { address, hasCar, hasAirplane, bestTransport });
+    } catch (err) {
+        logger.warn('PLS transport detection failed', { address, error: err.message?.substring(0, 150) });
+        results.pls.error = err.message?.substring(0, 100);
+    }
+
+    // Check BNB Chain transport
+    try {
+        const hasAirplane = await checkItemOwnership('bnb', TRANSPORT_ITEMS.AIRPLANE);
+        const hasCar = await checkItemOwnership('bnb', TRANSPORT_ITEMS.CAR);
+        
+        // Best transport: 2=airplane, 1=car, 0=train
+        let bestTransport = 0; // Train (always available)
+        if (hasCar) bestTransport = 1;
+        if (hasAirplane) bestTransport = 2;
+        
+        results.bnb = {
+            success: true,
+            hasTrain: true,
+            hasCar,
+            hasAirplane,
+            bestTransport
+        };
+        logger.info('BNB transport detected', { address, hasCar, hasAirplane, bestTransport });
+    } catch (err) {
+        logger.warn('BNB transport detection failed', { address, error: err.message?.substring(0, 150) });
+        results.bnb.error = err.message?.substring(0, 100);
+    }
+
+    logger.info('Transport detection complete', { address, results });
     res.json(results);
 });
 

@@ -2,16 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import API_BASE from '../config/api';
 import './TravelSettingsPanel.css';
 
-// City options (based on game cities)
+// City options (based on game contract)
 const CITIES = [
-    { id: 0, name: 'Chicago' },
-    { id: 1, name: 'Detroit' },
-    { id: 2, name: 'New York' },
-    { id: 3, name: 'Las Vegas' },
-    { id: 4, name: 'Philadelphia' },
-    { id: 5, name: 'Baltimore' },
-    { id: 6, name: 'Palermo' },
-    { id: 7, name: 'Naples' }
+    { id: 0, name: 'New York' },
+    { id: 1, name: 'Chicago' },
+    { id: 2, name: 'Las Vegas' },
+    { id: 3, name: 'Detroit' },
+    { id: 4, name: 'Los Angeles' },
+    { id: 5, name: 'Miami' }
 ];
 
 // Travel types (vehicles)
@@ -159,26 +157,71 @@ export default function TravelSettingsPanel({ wallets = [], onSettingsChange }) 
         setDetecting(prev => ({ ...prev, [name]: true }));
 
         try {
-            const res = await fetch(`${API_BASE}/api/wallet/city/${address}`);
-            const data = await res.json();
+            console.log('[TravelSettings] Detecting city and transport for', name, 'address:', address);
+            
+            // Fetch both city and transport in parallel
+            const [cityRes, transportRes] = await Promise.all([
+                fetch(`${API_BASE}/api/wallet/city/${address}`),
+                fetch(`${API_BASE}/api/wallet/transport/${address}`)
+            ]);
+            
+            const cityData = await cityRes.json();
+            const transportData = await transportRes.json();
+            
+            console.log('[TravelSettings] City detection response:', cityData);
+            console.log('[TravelSettings] Transport detection response:', transportData);
 
-            // Update start cities based on detected location
+            // Check if detection was successful
+            const plsDetected = cityData.pls?.success;
+            const bnbDetected = cityData.bnb?.success;
+            
+            if (!plsDetected && !bnbDetected) {
+                console.warn('[TravelSettings] No cities detected - player may not be registered', {
+                    plsError: cityData.pls?.error,
+                    bnbError: cityData.bnb?.error
+                });
+            } else {
+                console.log('[TravelSettings] Cities detected:', {
+                    pls: plsDetected ? cityData.pls.cityName : 'N/A',
+                    bnb: bnbDetected ? cityData.bnb.cityName : 'N/A'
+                });
+            }
+
+            // Log transport detection
+            console.log('[TravelSettings] Transport detected:', {
+                pls: transportData.pls?.success ? {
+                    hasTrain: transportData.pls.hasTrain,
+                    hasCar: transportData.pls.hasCar,
+                    hasAirplane: transportData.pls.hasAirplane,
+                    best: TRAVEL_TYPES[transportData.pls.bestTransport]?.name
+                } : 'N/A',
+                bnb: transportData.bnb?.success ? {
+                    hasTrain: transportData.bnb.hasTrain,
+                    hasCar: transportData.bnb.hasCar,
+                    hasAirplane: transportData.bnb.hasAirplane,
+                    best: TRAVEL_TYPES[transportData.bnb.bestTransport]?.name
+                } : 'N/A'
+            });
+
+            // Update start cities and travel types based on detected data
             setAllSettings(prev => ({
                 ...prev,
                 [name]: {
                     ...prev[name],
                     pls: {
                         ...(prev[name]?.pls || DEFAULT_WALLET_SETTINGS.pls),
-                        startCity: data.pls?.success ? data.pls.cityId : prev[name]?.pls?.startCity || 0
+                        startCity: cityData.pls?.success ? cityData.pls.cityId : prev[name]?.pls?.startCity || 0,
+                        travelType: transportData.pls?.success ? transportData.pls.bestTransport : prev[name]?.pls?.travelType || 0
                     },
                     bnb: {
                         ...(prev[name]?.bnb || DEFAULT_WALLET_SETTINGS.bnb),
-                        startCity: data.bnb?.success ? data.bnb.cityId : prev[name]?.bnb?.startCity || 0
+                        startCity: cityData.bnb?.success ? cityData.bnb.cityId : prev[name]?.bnb?.startCity || 0,
+                        travelType: transportData.bnb?.success ? transportData.bnb.bestTransport : prev[name]?.bnb?.travelType || 0
                     }
                 }
             }));
         } catch (err) {
-            console.error('Failed to detect city:', err);
+            console.error('[TravelSettings] Failed to detect city/transport:', err);
         } finally {
             setDetecting(prev => ({ ...prev, [name]: false }));
         }
