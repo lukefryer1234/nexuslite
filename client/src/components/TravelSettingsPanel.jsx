@@ -47,23 +47,48 @@ export default function TravelSettingsPanel({ wallets = [], onSettingsChange }) 
     });
     const [expanded, setExpanded] = useState(false);
     const [detecting, setDetecting] = useState({}); // Track which wallets are detecting
+    
+    // Load wallet addresses from localStorage (updated on login)
+    const [walletAddresses, setWalletAddresses] = useState(() => {
+        try {
+            const stored = JSON.parse(localStorage.getItem('keystoreAddresses') || '{}');
+            console.log('[TravelSettings] Initial addresses from localStorage:', stored);
+            return stored;
+        } catch {
+            return {};
+        }
+    });
+    
+    // Refresh addresses from localStorage when panel expands or wallets change
+    useEffect(() => {
+        console.log('[TravelSettings] useEffect triggered, expanded:', expanded, 'wallets:', wallets.length);
+        if (expanded || wallets.length > 0) {
+            try {
+                const stored = JSON.parse(localStorage.getItem('keystoreAddresses') || '{}');
+                console.log('[TravelSettings] Loaded addresses:', stored);
+                console.log('[TravelSettings] Wallet objects received:', wallets.map(w => ({ name: w.name || w, address: w.address })));
+                setWalletAddresses(stored);
+            } catch {
+                // Ignore
+            }
+        }
+    }, [expanded, wallets.length]);
 
     // Get wallet names (support both string and object format)
     const getWalletName = (wallet) => typeof wallet === 'string' ? wallet : wallet.name;
     
-    // Get wallet address - check localStorage if not provided
+    // Get wallet address - check state first, then wallet object
     const getWalletAddress = (wallet) => {
+        const name = getWalletName(wallet);
+        // Check our state first (loaded from localStorage)
+        if (walletAddresses[name]) {
+            return walletAddresses[name];
+        }
+        // Check if wallet object has address
         if (typeof wallet === 'object' && wallet.address) {
             return wallet.address;
         }
-        // Try to get from localStorage
-        const name = getWalletName(wallet);
-        try {
-            const storedAddresses = JSON.parse(localStorage.getItem('keystoreAddresses') || '{}');
-            return storedAddresses[name] || null;
-        } catch {
-            return null;
-        }
+        return null;
     };
 
     // Ensure all wallets have settings

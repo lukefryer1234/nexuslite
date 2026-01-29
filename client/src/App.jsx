@@ -74,10 +74,23 @@ function App() {
         body: JSON.stringify({ password: passwordInput })
       })
       const data = await res.json()
+      console.log('[App] Unlock response:', data)
       if (data.success) {
         setIsUnlocked(true)
         setGlobalPassword(passwordInput)
         localStorage.setItem('app_global_password', passwordInput)
+        
+        // Save wallet addresses from auto-test (makes detect buttons work immediately)
+        if (data.addresses && Object.keys(data.addresses).length > 0) {
+          console.log('[App] Saving addresses to localStorage:', data.addresses)
+          localStorage.setItem('keystoreAddresses', JSON.stringify(data.addresses))
+          // Also save individual wallet addresses for other features
+          for (const [name, address] of Object.entries(data.addresses)) {
+            localStorage.setItem(`wallet_addr_${name}`, address)
+          }
+        } else {
+          console.warn('[App] No addresses returned from unlock!')
+        }
       } else {
         setError(data.error || 'Failed to unlock')
       }

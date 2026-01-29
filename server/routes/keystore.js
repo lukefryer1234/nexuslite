@@ -19,7 +19,7 @@ router.get('/status', (req, res) => {
     res.json(globalPasswordManager.getStatus());
 });
 
-// Unlock all keystores with global password
+// Unlock all keystores with global password and auto-test wallets
 router.post('/unlock-all', async (req, res) => {
     const { password } = req.body;
 
@@ -30,7 +30,43 @@ router.post('/unlock-all', async (req, res) => {
     try {
         const result = await globalPasswordManager.unlockAll(password);
         logger.info('Global password unlocked', { walletCount: result.unlockedCount });
-        res.json(result);
+        
+        // Auto-test all wallets to get their addresses
+        const addresses = {};
+        const foundryBin = process.env.FOUNDRY_BIN || process.env.HOME + '/.foundry/bin';
+        
+        // Get all Foundry keystores (not just ones with stored passwords)
+        let keystoreNames = [];
+        try {
+            const { stdout } = await execAsync(`${foundryBin}/cast wallet list`);
+            keystoreNames = stdout.trim().split('\n')
+                .filter(k => k.length > 0)
+                .map(k => k.replace(/ \(Local\)$/, ''));
+        } catch (err) {
+            logger.warn('Failed to list keystores', { error: err.message });
+        }
+        
+        // Try each keystore with stored password first, then fall back to global password
+        for (const name of keystoreNames) {
+            const walletPassword = globalPasswordManager.getWalletPassword(name) || password;
+            try {
+                const { stdout } = await execAsync(
+                    `${foundryBin}/cast wallet address --account "${name}" --password "${walletPassword}"`,
+                    { timeout: 10000 }
+                );
+                addresses[name] = stdout.trim();
+                
+                // If this worked with global password, store it for future use
+                if (!globalPasswordManager.getWalletPassword(name)) {
+                    await globalPasswordManager.storeWalletPassword(name, walletPassword);
+                }
+            } catch (err) {
+                logger.warn('Failed to get address on unlock', { name, error: err.message });
+            }
+        }
+        
+        logger.info('Auto-loaded wallet addresses', { count: Object.keys(addresses).length });
+        res.json({ ...result, addresses });
     } catch (err) {
         logger.error('Failed to unlock', { error: err.message });
         res.status(401).json({ success: false, error: err.message });
@@ -212,12 +248,23 @@ router.get('/addresses', async (req, res) => {
         return res.status(401).json({ success: false, error: 'Global password not unlocked' });
     }
 
-    const storedWallets = globalPasswordManager.getStoredWallets();
     const foundryBin = process.env.FOUNDRY_BIN || process.env.HOME + '/.foundry/bin';
     const addresses = {};
+    
+    // Get all Foundry keystores (not just ones with stored passwords)
+    let keystoreNames = [];
+    try {
+        const { stdout } = await execAsync(`${foundryBin}/cast wallet list`);
+        keystoreNames = stdout.trim().split('\n')
+            .filter(k => k.length > 0)
+            .map(k => k.replace(/ \(Local\)$/, ''));
+    } catch (err) {
+        logger.warn('Failed to list keystores', { error: err.message });
+    }
 
-    for (const name of storedWallets) {
-        const password = globalPasswordManager.getWalletPassword(name);
+    // Try each keystore - use stored password first, fall back to master password
+    for (const name of keystoreNames) {
+        const password = globalPasswordManager.getWalletPassword(name) || globalPasswordManager.masterPassword;
         if (password) {
             try {
                 const { stdout } = await execAsync(
@@ -231,6 +278,7 @@ router.get('/addresses', async (req, res) => {
         }
     }
 
+    logger.info('Addresses endpoint returned', { count: Object.keys(addresses).length });
     res.json({ success: true, addresses });
 });
 
