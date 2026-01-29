@@ -45,6 +45,7 @@ export default function TravelSettingsPanel({ wallets = [], onSettingsChange }) 
     });
     const [expanded, setExpanded] = useState(false);
     const [detecting, setDetecting] = useState({}); // Track which wallets are detecting
+    const [saved, setSaved] = useState(false); // Track save button feedback
     
     // Load wallet addresses from localStorage (updated on login)
     const [walletAddresses, setWalletAddresses] = useState(() => {
@@ -236,6 +237,15 @@ export default function TravelSettingsPanel({ wallets = [], onSettingsChange }) 
         }
     };
 
+    // Manual save button for user assurance
+    const saveSettings = () => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(allSettings));
+        setSaved(true);
+        console.log('[TravelSettings] Settings saved manually:', allSettings);
+        // Reset saved state after 2 seconds
+        setTimeout(() => setSaved(false), 2000);
+    };
+
     const renderWalletRow = (wallet) => {
         const name = getWalletName(wallet);
         const address = getWalletAddress(wallet);
@@ -363,6 +373,19 @@ export default function TravelSettingsPanel({ wallets = [], onSettingsChange }) 
                                 <div className="col-chain">💛 BNB Chain Route</div>
                             </div>
                             {wallets.map(wallet => renderWalletRow(wallet))}
+                            
+                            {/* Save button section */}
+                            <div className="settings-actions">
+                                <button
+                                    className={`save-settings-btn ${saved ? 'saved' : ''}`}
+                                    onClick={saveSettings}
+                                >
+                                    {saved ? '✓ Saved!' : '💾 Save Settings'}
+                                </button>
+                                <span className="auto-save-note">
+                                    (Settings auto-save on change)
+                                </span>
+                            </div>
                         </>
                     )}
                 </div>

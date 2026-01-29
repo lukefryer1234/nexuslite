@@ -106,12 +106,13 @@ const INVENTORY_CONTRACTS = {
     bnb: '0x2CB8352Be090846d4878Faa92825188D7bf50654'
 };
 
-// Transport item IDs in the inventory
+// Transport item IDs in the ERC1155 inventory contract
+// These IDs are specific to the game's inventory system
 const TRANSPORT_ITEMS = {
-    // Car/vehicle item IDs (21-28 are vehicles in the game)
-    CAR: [21, 22, 23, 24, 25, 26, 28], // Motorcycle, Sedan, Sports Car, Armored, Coupe, Luxury, Jalopy
-    // Airplane item ID (Douglas M3 is item 27)
-    AIRPLANE: [27],
+    // Airplane item IDs in the inventory contract (1-5 are plane tickets)
+    AIRPLANE: [1, 2, 3, 4, 5],
+    // Car/vehicle item IDs in the inventory contract (10-15 are vehicles)
+    CAR: [10, 11, 12, 13, 14, 15],
     // Train is always available (no item needed)
     TRAIN: []
 };
