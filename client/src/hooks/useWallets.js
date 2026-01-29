@@ -21,8 +21,20 @@ export function useWallets(options = {}) {
             const data = await res.json();
 
             if (data.wallets) {
-                // Get addresses from localStorage
-                const storedAddresses = JSON.parse(localStorage.getItem('keystoreAddresses') || '{}');
+                // Try to get addresses from backend first (auto-load)
+                let storedAddresses = {};
+                try {
+                    const addrRes = await fetch(`${API_BASE}/api/keystore/addresses`);
+                    const addrData = await addrRes.json();
+                    if (addrData.success && addrData.addresses) {
+                        storedAddresses = addrData.addresses;
+                        // Save to localStorage for offline use
+                        localStorage.setItem('keystoreAddresses', JSON.stringify(storedAddresses));
+                    }
+                } catch {
+                    // Fall back to localStorage if backend fails
+                    storedAddresses = JSON.parse(localStorage.getItem('keystoreAddresses') || '{}');
+                }
                 
                 const walletsWithData = data.wallets.map(w => ({
                     name: w.name,

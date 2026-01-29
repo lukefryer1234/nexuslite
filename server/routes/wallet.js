@@ -12,10 +12,20 @@ const globalPasswordManager = require('../config/GlobalPasswordManager');
 const Logger = require('../config/Logger');
 const logger = new Logger('Wallet');
 
-// RPC URLs for each chain
-const RPC_URLS = {
+// Default RPC URLs (will be overridden by settings)
+const DEFAULT_RPC_URLS = {
     pls: 'https://rpc.pulsechain.com',
     bnb: 'https://bsc-dataseed.binance.org'
+};
+
+// Function to get current RPC URLs from settings
+const getRpcUrls = () => {
+    try {
+        const settingsRoutes = require('./settings');
+        return settingsRoutes.getRpcUrls();
+    } catch {
+        return DEFAULT_RPC_URLS;
+    }
 };
 
 // Get balance for an address on both chains
@@ -33,9 +43,10 @@ router.get('/balance/:address', async (req, res) => {
     };
 
     // Fetch PulseChain balance
+    const rpcUrls = getRpcUrls();
     try {
         const { stdout } = await execAsync(
-            `${foundryBin}/cast balance ${address} --rpc-url ${RPC_URLS.pls}`,
+            `${foundryBin}/cast balance ${address} --rpc-url ${rpcUrls.pls}`,
             { timeout: 10000 }
         );
         const raw = stdout.trim();
@@ -54,7 +65,7 @@ router.get('/balance/:address', async (req, res) => {
     // Fetch BNB balance
     try {
         const { stdout } = await execAsync(
-            `${foundryBin}/cast balance ${address} --rpc-url ${RPC_URLS.bnb}`,
+            `${foundryBin}/cast balance ${address} --rpc-url ${rpcUrls.bnb}`,
             { timeout: 10000 }
         );
         const raw = stdout.trim();
@@ -68,6 +79,75 @@ router.get('/balance/:address', async (req, res) => {
         };
     } catch (err) {
         results.bnb = { success: false, error: 'RPC error', balance: '0', raw: '0' };
+    }
+
+    res.json(results);
+});
+
+// MAP contract addresses for each chain
+const MAP_CONTRACTS = {
+    pls: '0xE571Aa670EDeEBd88887eb5687576199652A714F',
+    bnb: '0x1c88060e4509c59b4064A7a9818f64AeC41ef19E'
+};
+
+// City names mapping
+const CITY_NAMES = {
+    0: 'Chicago',
+    1: 'Detroit',
+    2: 'New York',
+    3: 'Las Vegas',
+    4: 'Philadelphia',
+    5: 'Baltimore',
+    6: 'Palermo',
+    7: 'Naples'
+};
+
+// Get player's current city on both chains
+router.get('/city/:address', async (req, res) => {
+    const { address } = req.params;
+    
+    if (!address || !address.startsWith('0x')) {
+        return res.status(400).json({ success: false, error: 'Invalid address' });
+    }
+
+    const foundryBin = process.env.FOUNDRY_BIN || process.env.HOME + '/.foundry/bin';
+    const results = {
+        pls: { success: false, cityId: null, cityName: null },
+        bnb: { success: false, cityId: null, cityName: null }
+    };
+
+    const rpcUrls = getRpcUrls();
+
+    // Query PulseChain
+    try {
+        const { stdout } = await execAsync(
+            `${foundryBin}/cast call ${MAP_CONTRACTS.pls} "getCity(address)(uint256)" ${address} --rpc-url ${rpcUrls.pls}`,
+            { timeout: 10000 }
+        );
+        const cityId = parseInt(stdout.trim());
+        results.pls = {
+            success: true,
+            cityId,
+            cityName: CITY_NAMES[cityId] || `Unknown (${cityId})`
+        };
+    } catch (err) {
+        results.pls = { success: false, error: err.message?.substring(0, 100) };
+    }
+
+    // Query BNB Chain
+    try {
+        const { stdout } = await execAsync(
+            `${foundryBin}/cast call ${MAP_CONTRACTS.bnb} "getCity(address)(uint256)" ${address} --rpc-url ${rpcUrls.bnb}`,
+            { timeout: 10000 }
+        );
+        const cityId = parseInt(stdout.trim());
+        results.bnb = {
+            success: true,
+            cityId,
+            cityName: CITY_NAMES[cityId] || `Unknown (${cityId})`
+        };
+    } catch (err) {
+        results.bnb = { success: false, error: err.message?.substring(0, 100) };
     }
 
     res.json(results);
@@ -101,7 +181,8 @@ router.post('/transfer', async (req, res) => {
     }
 
     const foundryBin = process.env.FOUNDRY_BIN || process.env.HOME + '/.foundry/bin';
-    const rpcUrl = RPC_URLS[chain];
+    const rpcUrls = getRpcUrls();
+    const rpcUrl = rpcUrls[chain];
 
     try {
         // Convert amount to wei (amount is in ether)

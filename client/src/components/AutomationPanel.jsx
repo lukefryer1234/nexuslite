@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import TravelSettingsPanel from './TravelSettingsPanel'
 
 const CHAINS = [
   { id: 'pls', name: 'PulseChain', icon: '💜' },
@@ -17,6 +18,7 @@ function AutomationPanel({ selectedWallet, apiBase, socket }) {
   const [scriptStatuses, setScriptStatuses] = useState({})
   const [logs, setLogs] = useState({})
   const [loading, setLoading] = useState({})
+  const [travelSettings, setTravelSettings] = useState(null)
   const logRef = useRef(null)
 
   const fetchAllStatuses = useCallback(async () => {
@@ -43,14 +45,27 @@ function AutomationPanel({ selectedWallet, apiBase, socket }) {
         return
       }
 
+      // Build request body
+      const requestBody = {
+        chain: selectedChain,
+        keystore: selectedWallet,
+        walletId: selectedWallet
+      }
+
+      // Add travel settings if starting travel script
+      if (scriptName === 'travel' && travelSettings) {
+        const chainSettings = travelSettings[selectedChain]
+        if (chainSettings) {
+          requestBody.startCity = chainSettings.startCity
+          requestBody.endCity = chainSettings.endCity
+          requestBody.travelType = chainSettings.travelType
+        }
+      }
+
       const res = await fetch(`${apiBase}/api/scripts/${scriptName}/start`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chain: selectedChain,
-          keystore: selectedWallet,
-          walletId: selectedWallet
-        })
+        body: JSON.stringify(requestBody)
       })
       const data = await res.json()
       if (data.success) {
@@ -171,6 +186,8 @@ function AutomationPanel({ selectedWallet, apiBase, socket }) {
       <div className="wallet-indicator">
         Active Wallet: <strong>{selectedWallet || 'None selected'}</strong>
       </div>
+
+      <TravelSettingsPanel onSettingsChange={setTravelSettings} />
 
       <div className="scripts-grid">
         {SCRIPTS.map(script => {

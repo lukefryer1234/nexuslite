@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useWallets } from '../hooks/useWallets';
 import WalletSelector from '../components/WalletSelector';
 import LogViewer from '../components/LogViewer';
 import CooldownTracker from '../components/CooldownTracker';
 import WalletResultsPanel from '../components/WalletResultsPanel';
+import TravelSettingsPanel from '../components/TravelSettingsPanel';
+import CrimeAnalyticsPanel from '../components/CrimeAnalyticsPanel';
 import API_BASE from '../config/api';
 import './AutomationPage.css';
 
@@ -40,6 +42,15 @@ export default function AutomationPage() {
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedWalletFilter, setSelectedWalletFilter] = useState(null);
+
+    // Travel settings - per wallet, keyed by wallet name
+    const travelSettingsRef = useRef({});
+    const travelGetterRef = useRef(null);
+
+    const handleTravelSettingsChange = useCallback((allSettings, getter) => {
+        travelSettingsRef.current = allSettings;
+        if (getter) travelGetterRef.current = getter;
+    }, []);
 
     // Filter logs by selected wallet
     const filteredLogs = useMemo(() => {
@@ -145,6 +156,17 @@ export default function AutomationPage() {
 
         try {
             if (action === 'start') {
+                // Get travel settings for this wallet if it's a travel script
+                let travelParams = {};
+                if (scriptName === 'travel' && travelGetterRef.current) {
+                    const settings = travelGetterRef.current(effectiveWalletId, chain);
+                    travelParams = {
+                        startCity: settings.startCity,
+                        endCity: settings.endCity,
+                        travelType: settings.travelType
+                    };
+                }
+
                 await fetch(`${API_BASE}/api/${endpoint}/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -153,7 +175,8 @@ export default function AutomationPage() {
                         keystore: effectiveWalletId,
                         password: currentPassword,
                         walletId: effectiveWalletId,
-                        ...scriptConfig
+                        ...scriptConfig,
+                        ...travelParams
                     })
                 });
             } else {
@@ -387,6 +410,15 @@ export default function AutomationPage() {
 
             {/* Cooldown Tracker - centralized view of all wallet cooldowns */}
             <CooldownTracker wallets={getSelectedWalletObjects()} />
+
+            {/* Travel Settings - per-wallet configuration */}
+            <TravelSettingsPanel
+                wallets={getSelectedWalletObjects()}
+                onSettingsChange={handleTravelSettingsChange}
+            />
+
+            {/* Crime Analytics - stats and optimal type recommendation */}
+            <CrimeAnalyticsPanel />
 
             {/* Global Control Bar */}
             <div className="global-controls">

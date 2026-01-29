@@ -58,11 +58,15 @@ class ScriptSchedulerService {
         // Structure: processes[type][chain][walletId] = childProcess
         this.processes = {};
         this.logs = {};
+        this.crimeTypeMap = {}; // Track crime type per wallet: {walletId: crimeType}
 
         for (const type of Object.keys(SCHEDULER_CONFIGS)) {
             this.processes[type] = { pls: {}, bnb: {} };
             this.logs[type] = { pls: {}, bnb: {} };
         }
+
+        // Analytics service will be injected by routes
+        this.crimeAnalytics = null;
 
         // Ensure cleanup on server exit
         this._setupProcessCleanup();
@@ -149,8 +153,12 @@ class ScriptSchedulerService {
         };
 
         // Add type-specific env vars
-        if (type === 'crime' && options.crimeType !== undefined) {
-            scriptEnv[`${chain.toUpperCase()}_CRIME_TYPE`] = String(options.crimeType);
+        if (type === 'crime') {
+            // Always set crime type (default to 0) - script requires this unless RANDOMIZE_CRIMES is true
+            const crimeType = options.crimeType !== undefined ? String(options.crimeType) : '0';
+            scriptEnv[`${chain.toUpperCase()}_CRIME_TYPE`] = crimeType;
+            // Track crime type for this wallet for analytics
+            this.crimeTypeMap[effectiveWalletId] = parseInt(crimeType);
         }
         if (type === 'killskill' && options.trainType !== undefined) {
             scriptEnv.KILL_SKILL_TRAIN_TYPE = String(options.trainType);
@@ -373,6 +381,12 @@ class ScriptSchedulerService {
             }
 
             this.io.emit(eventName, logEntry);
+
+            // Track crime analytics
+            if (type === 'crime' && this.crimeAnalytics) {
+                const crimeType = this.crimeTypeMap[walletId] || 0;
+                this.crimeAnalytics.recordCrimeAttempt(logEntry, crimeType);
+            }
 
             // Capture metrics if available
             if (this.metrics) {

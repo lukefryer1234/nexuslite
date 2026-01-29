@@ -16,6 +16,7 @@ const Logger = require('./config/Logger');
 const ScriptSchedulerService = require('./services/ScriptSchedulerService');
 const keystoreRoutes = require('./routes/keystore');
 const walletRoutes = require('./routes/wallet');
+const settingsRoutes = require('./routes/settings');
 const { createScriptRoutes } = require('./routes/scripts');
 const { createLegacyRoutes } = require('./routes/legacy');
 
@@ -50,8 +51,23 @@ const schedulerService = new ScriptSchedulerService({
 // API Routes
 app.use('/api/keystore', keystoreRoutes);
 app.use('/api/wallet', walletRoutes);
+app.use('/api/settings', settingsRoutes);
 app.use('/api/scripts', createScriptRoutes(schedulerService));
 app.use('/api', createLegacyRoutes(schedulerService));
+
+// Serve static files from client build
+const path = require('path');
+const clientBuildPath = path.join(__dirname, '..', 'client', 'dist');
+app.use(express.static(clientBuildPath));
+
+// Fallback to index.html for SPA routes (must be after API routes)
+app.use((req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+        return next();
+    }
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -60,6 +76,22 @@ app.get('/api/health', (req, res) => {
         uptime: process.uptime(),
         memoryUsage: process.memoryUsage()
     });
+});
+
+// Restart endpoint - gracefully shutdown, systemd will restart
+app.post('/api/restart', (req, res) => {
+    logger.info('Restart requested via API');
+    res.json({ success: true, message: 'Server restarting...' });
+    
+    // Give response time to send, then gracefully shutdown
+    setTimeout(() => {
+        schedulerService.stopAll();
+        server.close(() => {
+            process.exit(0);
+        });
+        // Force exit if close hangs
+        setTimeout(() => process.exit(0), 2000);
+    }, 500);
 });
 
 // Socket.io connection handling

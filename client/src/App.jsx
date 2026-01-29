@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import AutomationPage from './pages/AutomationPage'
 import FoundryPage from './pages/FoundryPage'
+import SettingsPage from './pages/SettingsPage'
 import API_BASE from './config/api'
 import './index.css'
 
@@ -11,6 +12,22 @@ function App() {
   const [passwordInput, setPasswordInput] = useState('')
   const [serverStatus, setServerStatus] = useState('checking')
   const [error, setError] = useState('')
+  const [restarting, setRestarting] = useState(false)
+
+  const handleRestart = async () => {
+    if (!confirm('Restart the server? This will stop all running scripts.')) return
+    setRestarting(true)
+    try {
+      await fetch(`${API_BASE}/api/restart`, { method: 'POST' })
+      // Wait and check for server to come back
+      setTimeout(() => {
+        setServerStatus('offline')
+        setRestarting(false)
+      }, 1000)
+    } catch {
+      setRestarting(false)
+    }
+  }
 
   // Check server health
   useEffect(() => {
@@ -86,7 +103,7 @@ function App() {
         <main className="offline-message">
           <h2>⚠️ Server Offline</h2>
           <p>Start the server with:</p>
-          <code>cd "/home/luke/Nexus lite/server" && npm start</code>
+          <code>cd server && npm start</code>
         </main>
       </div>
     )
@@ -137,15 +154,30 @@ function App() {
           >
             🔧 Foundry Wallets
           </button>
+          <button 
+            className={activeTab === 'settings' ? 'active' : ''} 
+            onClick={() => setActiveTab('settings')}
+          >
+            ⚙️ Settings
+          </button>
         </nav>
         <div className="header-controls">
           <span className="status online">● Online</span>
+          <button 
+            className="btn-restart" 
+            onClick={handleRestart}
+            disabled={restarting}
+            title="Restart server"
+          >
+            {restarting ? '⏳' : '🔄'} Restart
+          </button>
           <button className="btn-lock" onClick={handleLock}>🔒 Lock</button>
         </div>
       </header>
       <main className="app-main">
         {activeTab === 'automation' && <AutomationPage />}
         {activeTab === 'foundry' && <FoundryPage />}
+        {activeTab === 'settings' && <SettingsPage />}
       </main>
     </div>
   )

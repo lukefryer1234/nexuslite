@@ -1,12 +1,33 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import './WalletResultsPanel.css';
+
+// Timescale options in milliseconds
+const TIMESCALES = [
+    { label: '1 Hour', value: 1 * 60 * 60 * 1000 },
+    { label: '6 Hours', value: 6 * 60 * 60 * 1000 },
+    { label: '24 Hours', value: 24 * 60 * 60 * 1000 },
+    { label: '7 Days', value: 7 * 24 * 60 * 60 * 1000 },
+    { label: 'All Time', value: null }
+];
 
 /**
  * WalletResultsPanel - Shows per-wallet statistics and results
  * Displays success/fail counts, last activity, and status for each wallet
  */
 export default function WalletResultsPanel({ logs, wallets, selectedWallet, onWalletSelect }) {
-    // Calculate stats per wallet from logs
+    const [timescale, setTimescale] = useState(TIMESCALES[2].value); // Default to 24 hours
+
+    // Filter logs by timescale
+    const filteredLogs = useMemo(() => {
+        if (timescale === null) return logs;
+        const cutoff = Date.now() - timescale;
+        return logs.filter(log => {
+            const logTime = log.time ? new Date(log.time).getTime() : 0;
+            return logTime >= cutoff;
+        });
+    }, [logs, timescale]);
+
+    // Calculate stats per wallet from filtered logs
     const walletStats = useMemo(() => {
         const stats = {};
         
@@ -28,7 +49,7 @@ export default function WalletResultsPanel({ logs, wallets, selectedWallet, onWa
         }
         
         // Parse logs for stats
-        for (const log of logs) {
+        for (const log of filteredLogs) {
             const walletId = log.walletId;
             if (!walletId || !stats[walletId]) continue;
             
@@ -62,7 +83,7 @@ export default function WalletResultsPanel({ logs, wallets, selectedWallet, onWa
         }
         
         return Object.values(stats);
-    }, [logs, wallets]);
+    }, [filteredLogs, wallets]);
 
     const formatTime = (timestamp) => {
         if (!timestamp) return 'No activity';
@@ -74,16 +95,27 @@ export default function WalletResultsPanel({ logs, wallets, selectedWallet, onWa
         <div className="wallet-results-panel">
             <div className="panel-header">
                 <h3>📊 Wallet Results</h3>
-                <select 
-                    value={selectedWallet || 'all'} 
-                    onChange={(e) => onWalletSelect(e.target.value === 'all' ? null : e.target.value)}
-                    className="wallet-filter"
-                >
-                    <option value="all">All Wallets</option>
-                    {wallets.map(w => (
-                        <option key={w} value={w}>{w}</option>
-                    ))}
-                </select>
+                <div className="header-filters">
+                    <select
+                        value={timescale === null ? 'all' : timescale}
+                        onChange={(e) => setTimescale(e.target.value === 'all' ? null : Number(e.target.value))}
+                        className="timescale-filter"
+                    >
+                        {TIMESCALES.map(ts => (
+                            <option key={ts.label} value={ts.value === null ? 'all' : ts.value}>{ts.label}</option>
+                        ))}
+                    </select>
+                    <select 
+                        value={selectedWallet || 'all'} 
+                        onChange={(e) => onWalletSelect(e.target.value === 'all' ? null : e.target.value)}
+                        className="wallet-filter"
+                    >
+                        <option value="all">All Wallets</option>
+                        {wallets.map(w => (
+                            <option key={w} value={w}>{w}</option>
+                        ))}
+                    </select>
+                </div>
             </div>
             
             <div className="wallet-cards">

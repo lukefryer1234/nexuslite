@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const DATA_DIR = process.env.NEXUS_LITE_DATA || path.join(process.env.HOME || '/home/luke', '.nexus-lite');
+const DATA_DIR = process.env.NEXUS_LITE_DATA || path.join(process.env.HOME, '.nexus-lite');
 const PASSWORDS_FILE = path.join(DATA_DIR, 'wallet-passwords.enc');
 const SALT_FILE = path.join(DATA_DIR, '.salt');
 
@@ -175,8 +175,8 @@ class GlobalPasswordManager {
         const password = walletPassword || crypto.randomBytes(32).toString('hex');
 
         // Create the keystore using Foundry's cast
-        const foundryBin = process.env.FOUNDRY_BIN || '/home/luke/.foundry/bin';
-        const keystorePath = process.env.KEYSTORE_PATH || '/home/luke/.foundry/keystores';
+        const foundryBin = process.env.FOUNDRY_BIN || path.join(process.env.HOME, '.foundry/bin');
+        const keystorePath = process.env.KEYSTORE_PATH || path.join(process.env.HOME, '.foundry/keystores');
         
         try {
             // Create keystore with cast wallet import
@@ -216,7 +216,7 @@ class GlobalPasswordManager {
         }
 
         // Verify password works
-        const foundryBin = process.env.FOUNDRY_BIN || '/home/luke/.foundry/bin';
+        const foundryBin = process.env.FOUNDRY_BIN || path.join(process.env.HOME, '.foundry/bin');
         try {
             execSync(
                 `echo "${password}" | ${foundryBin}/cast wallet address --account "${name}" --password-stdin`,

@@ -56,7 +56,7 @@ Run automated game actions across multiple wallets simultaneously:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/nexus-lite.git
+git clone https://github.com/lukefryer1234/nexus-lite.git
 cd nexus-lite
 ```
 
@@ -113,7 +113,7 @@ cd client
 npm run dev
 ```
 
-Access the application at: **http://localhost:5173**
+Access the application at: **http://localhost:4001**
 
 ## Usage Guide
 

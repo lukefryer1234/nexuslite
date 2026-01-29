@@ -206,6 +206,34 @@ router.delete('/delete/:name', async (req, res) => {
 });
 
 
+// Get all wallet addresses at once (for auto-loading)
+router.get('/addresses', async (req, res) => {
+    if (!globalPasswordManager.isUnlocked) {
+        return res.status(401).json({ success: false, error: 'Global password not unlocked' });
+    }
+
+    const storedWallets = globalPasswordManager.getStoredWallets();
+    const foundryBin = process.env.FOUNDRY_BIN || process.env.HOME + '/.foundry/bin';
+    const addresses = {};
+
+    for (const name of storedWallets) {
+        const password = globalPasswordManager.getWalletPassword(name);
+        if (password) {
+            try {
+                const { stdout } = await execAsync(
+                    `${foundryBin}/cast wallet address --account "${name}" --password "${password}"`,
+                    { timeout: 10000 }
+                );
+                addresses[name] = stdout.trim();
+            } catch (err) {
+                logger.warn('Failed to get address', { name, error: err.message });
+            }
+        }
+    }
+
+    res.json({ success: true, addresses });
+});
+
 // Get wallet address
 router.get('/address/:name', async (req, res) => {
     const { name } = req.params;

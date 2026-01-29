@@ -47,3 +47,10 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# Server data (analytics, local state)
+server/data/
+
+# Database files
+*.sqlite
+*.db

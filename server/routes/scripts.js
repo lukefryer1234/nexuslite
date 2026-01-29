@@ -5,9 +5,16 @@
 
 const express = require('express');
 const globalPasswordManager = require('../config/GlobalPasswordManager');
+const CrimeAnalyticsService = require('../services/CrimeAnalyticsService');
+
+// Create shared analytics instance
+const crimeAnalytics = new CrimeAnalyticsService();
 
 function createScriptRoutes(schedulerService) {
     const router = express.Router();
+    
+    // Inject analytics into scheduler for tracking
+    schedulerService.crimeAnalytics = crimeAnalytics;
     
     // Helper to get effective password (from request or global unlock)
     const getEffectivePassword = (password) => {
@@ -51,6 +58,20 @@ function createScriptRoutes(schedulerService) {
     router.get('/crime/logs', (req, res) => {
         const { chain, walletId } = req.query;
         res.json(schedulerService.getLogs('crime', chain, walletId));
+    });
+
+    // Crime Analytics endpoints
+    router.get('/crime/analytics', (req, res) => {
+        res.json(crimeAnalytics.getAnalytics());
+    });
+
+    router.get('/crime/recommendation', (req, res) => {
+        res.json(crimeAnalytics.getRecommendation());
+    });
+
+    router.post('/crime/analytics/reset', (req, res) => {
+        crimeAnalytics.reset();
+        res.json({ success: true, message: 'Crime analytics reset' });
     });
 
     // ===== NICKCAR ENDPOINTS =====

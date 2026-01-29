@@ -28,6 +28,21 @@
     font-size: 0.9rem;
 }
 
+.header-filters {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.timescale-filter {
+    background: rgba(0, 50, 100, 0.5);
+    border: 1px solid rgba(0, 150, 255, 0.4);
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
 .wallet-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
