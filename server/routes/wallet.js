@@ -90,14 +90,38 @@ const MAP_CONTRACTS = {
     bnb: '0x1c88060e4509c59b4064A7a9818f64AeC41ef19E'
 };
 
-// City names mapping (matches game contract)
+// City names mapping (comprehensive list from game)
 const CITY_NAMES = {
     0: 'New York',
     1: 'Chicago',
     2: 'Las Vegas',
     3: 'Detroit',
     4: 'Los Angeles',
-    5: 'Miami'
+    5: 'Miami',
+    6: 'Atlantic City',
+    7: 'Philadelphia',
+    8: 'Boston',
+    9: 'San Francisco',
+    10: 'Houston',
+    11: 'Dallas',
+    12: 'Seattle',
+    13: 'Denver',
+    14: 'Phoenix',
+    15: 'Atlanta',
+    16: 'New Orleans',
+    17: 'Kansas City',
+    18: 'St. Louis',
+    19: 'Minneapolis',
+    20: 'Portland',
+    21: 'San Diego',
+    22: 'Tampa',
+    23: 'Cleveland',
+    24: 'Pittsburgh',
+    25: 'Baltimore',
+    26: 'Washington DC',
+    27: 'Nashville',
+    28: 'Memphis',
+    29: 'Charlotte'
 };
 
 // Inventory (ERC1155) contract addresses for checking item ownership
