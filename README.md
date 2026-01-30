@@ -151,6 +151,17 @@ env: {
 }
 ```
 
+> **⚠️ Password Requirement**: All your Foundry keystores must use the **same password** for `GLOBAL_PASSWORD` to work. When creating wallets, use a consistent password.
+>
+> If you have wallets with different passwords, you can set individual passwords:
+> ```javascript
+> env: {
+>   GLOBAL_PASSWORD: 'default_password',
+>   MUM_PASSWORD: 'different_password',      // For wallet named "Mum"
+>   WALLET2_PASSWORD: 'another_password'     // For wallet named "wallet2"
+> }
+> ```
+
 ### 4. Start Automation
 
 ```bash
