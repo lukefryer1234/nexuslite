@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import API_BASE from '../config/api';
 import './CooldownTracker.css';
 
@@ -9,8 +10,8 @@ import './CooldownTracker.css';
 export default function CooldownTracker({ wallets = [] }) {
     const [cooldowns, setCooldowns] = useState({});
     const [loading, setLoading] = useState(false);
-    const [chain, setChain] = useState('pulsechain');
-    const [autoRefresh, setAutoRefresh] = useState(true);
+    const [chain, setChain] = usePersistentState('nexus_cooldown_chain', 'pulsechain');
+    const [autoRefresh, setAutoRefresh] = usePersistentState('nexus_cooldown_autorefresh', true);
     const [lastUpdate, setLastUpdate] = useState(null);
 
     // Cooldown definitions

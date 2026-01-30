@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import API_BASE from '../config/api';
 import './QuickTransfer.css';
 
@@ -11,7 +12,7 @@ export default function QuickTransfer() {
     const [balances, setBalances] = useState({});
     const [fromWallet, setFromWallet] = useState('');
     const [toWallet, setToWallet] = useState('');
-    const [chain, setChain] = useState('pls');
+    const [chain, setChain] = usePersistentState('nexus_transfer_chain', 'pls');
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(true);
     const [sending, setSending] = useState(false);
