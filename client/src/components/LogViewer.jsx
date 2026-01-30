@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import './LogViewer.css';
 
 /**
@@ -24,9 +25,9 @@ export default function LogViewer({
     height = '300px',
     placeholder = 'Waiting for logs...'
 }) {
-    const [typeFilter, setTypeFilter] = useState('all');
-    const [chainFilter, setChainFilter] = useState('all');
-    const [autoScrollEnabled, setAutoScrollEnabled] = useState(autoScroll);
+    const [typeFilter, setTypeFilter] = usePersistentState('nexus_log_type_filter', 'all');
+    const [chainFilter, setChainFilter] = usePersistentState('nexus_log_chain_filter', 'all');
+    const [autoScrollEnabled, setAutoScrollEnabled] = usePersistentState('nexus_log_autoscroll', autoScroll);
     const [copied, setCopied] = useState(false);
     const logsEndRef = useRef(null);
     const containerRef = useRef(null);

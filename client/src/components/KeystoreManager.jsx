@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import * as bip39 from 'bip39';
 import { HDKey } from '@scure/bip32';
 import { keccak_256 } from '@noble/hashes/sha3.js';
@@ -14,7 +15,7 @@ export default function KeystoreManager({ socket }) {
 
     // Create wallet form
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [createMethod, setCreateMethod] = useState('key'); // 'key' or 'seed'
+    const [createMethod, setCreateMethod] = usePersistentState('nexus_create_method', 'key'); // 'key' or 'seed'
     const [walletName, setWalletName] = useState('');
     const [privateKey, setPrivateKey] = useState('');
     const [password, setPassword] = useState('');
@@ -28,7 +29,7 @@ export default function KeystoreManager({ socket }) {
     const [showSeedAccounts, setShowSeedAccounts] = useState(false);
     const [derivingKeys, setDerivingKeys] = useState(false);
     const [fetchingBalances, setFetchingBalances] = useState(false);
-    const [derivationPath, setDerivationPath] = useState('metamask'); // default to Metamask
+    const [derivationPath, setDerivationPath] = usePersistentState('nexus_derivation_path', 'metamask'); // default to Metamask
 
     // Derivation path patterns for different wallets
     const derivationPaths = {

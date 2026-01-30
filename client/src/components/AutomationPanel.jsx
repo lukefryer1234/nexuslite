@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { usePersistentState } from '../hooks/usePersistentState'
 import TravelSettingsPanel from './TravelSettingsPanel'
 
 const CHAINS = [
@@ -14,7 +15,7 @@ const SCRIPTS = [
 ]
 
 function AutomationPanel({ selectedWallet, apiBase, socket }) {
-  const [selectedChain, setSelectedChain] = useState('pls')
+  const [selectedChain, setSelectedChain] = usePersistentState('nexus_selected_chain', 'pls')
   const [scriptStatuses, setScriptStatuses] = useState({})
   const [logs, setLogs] = useState({})
   const [loading, setLoading] = useState({})

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import API_BASE from '../config/api';
 import './CrimeAnalyticsPanel.css';
 
@@ -8,7 +9,7 @@ import './CrimeAnalyticsPanel.css';
 export default function CrimeAnalyticsPanel({ onCrimeTypeChange }) {
     const [analytics, setAnalytics] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = usePersistentState('nexus_crime_panel_expanded', false);
     const [selectedType, setSelectedType] = useState(0);
 
     const fetchAnalytics = useCallback(async () => {

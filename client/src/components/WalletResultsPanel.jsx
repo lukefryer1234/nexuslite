@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import './WalletResultsPanel.css';
 
 // Timescale options in milliseconds
@@ -15,7 +16,7 @@ const TIMESCALES = [
  * Displays success/fail counts, last activity, and status for each wallet
  */
 export default function WalletResultsPanel({ logs, wallets, selectedWallet, onWalletSelect }) {
-    const [timescale, setTimescale] = useState(TIMESCALES[2].value); // Default to 24 hours
+    const [timescale, setTimescale] = usePersistentState('nexus_results_timescale', TIMESCALES[2].value); // Default to 24 hours
 
     // Filter logs by timescale
     const filteredLogs = useMemo(() => {

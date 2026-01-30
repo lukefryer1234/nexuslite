@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import './CrimeResultsPanel.css';
 
 /**
@@ -16,7 +17,7 @@ export default function CrimeResultsPanel() {
         { label: '7 Days', hours: 168 }
     ];
 
-    const [timeScale, setTimeScale] = useState(24);
+    const [timeScale, setTimeScale] = usePersistentState('nexus_crime_timescale', 24);
     const [summary, setSummary] = useState({ pls: null, bnb: null });
     const [wallets, setWallets] = useState([]);
     const [activeWallets, setActiveWallets] = useState(new Set());
