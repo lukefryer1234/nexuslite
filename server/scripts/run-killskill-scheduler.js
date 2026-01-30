@@ -5,6 +5,8 @@
  */
 const { exec } = require("child_process");
 const util = require("util");
+const path = require("path");
+const fs = require("fs");
 require("dotenv").config();
 
 const execPromise = util.promisify(exec);
@@ -18,22 +20,40 @@ const TRAIN_TYPE = parseInt(process.env.KILL_SKILL_TRAIN_TYPE || "0");
 // Cooldown: 45 minutes (+ 1 minute buffer)
 const COOLDOWN_MS = 46 * 60 * 1000;
 
-// Read keystore config
-const plsKeystoreNames = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2
-    ? (process.env.PLS_KEYSTORE_NAME ? process.env.PLS_KEYSTORE_NAME.split(",").map(n => n.trim()) : [])
-    : [];
+// Auto-discover keystores from Foundry directory
+const KEYSTORE_DIR = process.env.KEYSTORE_PATH || path.join(require('os').homedir(), '.foundry', 'keystores');
 
-const bnbKeystoreNames = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2
-    ? (process.env.BNB_KEYSTORE_NAME ? process.env.BNB_KEYSTORE_NAME.split(",").map(n => n.trim()) : [])
-    : [];
+function discoverKeystores() {
+    try {
+        if (!fs.existsSync(KEYSTORE_DIR)) {
+            console.error(`Error: Keystore directory not found: ${KEYSTORE_DIR}`);
+            return [];
+        }
+        const files = fs.readdirSync(KEYSTORE_DIR);
+        const keystores = files.filter(f => {
+            const fullPath = path.join(KEYSTORE_DIR, f);
+            return !f.startsWith('.') && fs.statSync(fullPath).isFile();
+        });
+        console.log(`[Config] Auto-discovered ${keystores.length} keystore(s): ${keystores.join(', ')}`);
+        return keystores;
+    } catch (error) {
+        console.error(`Error reading keystore directory: ${error.message}`);
+        return [];
+    }
+}
 
-const plsKeystorePasswords = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2
-    ? (process.env.PLS_KEYSTORE_PASSWORD ? process.env.PLS_KEYSTORE_PASSWORD.split(",").map(p => p.trim()) : [])
-    : [];
+function getPassword(keystoreName) {
+    const specificPassword = process.env[`${keystoreName.toUpperCase()}_PASSWORD`];
+    if (specificPassword) return specificPassword;
+    return process.env.GLOBAL_PASSWORD || 
+           process.env.PLS_KEYSTORE_PASSWORD?.split(',')[0]?.trim() || '';
+}
 
-const bnbKeystorePasswords = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2
-    ? (process.env.BNB_KEYSTORE_PASSWORD ? process.env.BNB_KEYSTORE_PASSWORD.split(",").map(p => p.trim()) : [])
-    : [];
+const discoveredKeystores = discoverKeystores();
+const plsKeystoreNames = (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
+const bnbKeystoreNames = (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
+const plsKeystorePasswords = plsKeystoreNames.map(name => getPassword(name));
+const bnbKeystorePasswords = bnbKeystoreNames.map(name => getPassword(name));
 
 // Chain configurations
 const chains = {

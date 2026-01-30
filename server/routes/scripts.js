@@ -69,6 +69,26 @@ function createScriptRoutes(schedulerService) {
         res.json(crimeAnalytics.getRecommendation());
     });
 
+    // Record crime attempt from external scripts (PM2)
+    router.post('/crime/record', (req, res) => {
+        const { wallet, chain, crimeType = 0, success, jailed, cooldown, output, error } = req.body;
+        
+        // Build log text for the analytics service
+        let logText = '';
+        if (success) {
+            logText = `${chain} makeCrime (crimeType: ${crimeType}) executed successfully for ${wallet}`;
+        } else if (jailed) {
+            logText = `${chain} makeCrime failed for ${wallet}: jail`;
+        } else if (cooldown) {
+            logText = `${chain} makeCrime failed for ${wallet}: cooldown`;
+        } else {
+            logText = `${chain} makeCrime failed for ${wallet}: ${error || 'unknown'}`;
+        }
+        
+        crimeAnalytics.recordCrimeAttempt({ text: logText }, crimeType);
+        res.json({ success: true, recorded: { wallet, chain, crimeType, success: !!success } });
+    });
+
     router.post('/crime/analytics/reset', (req, res) => {
         crimeAnalytics.reset();
         res.json({ success: true, message: 'Crime analytics reset' });

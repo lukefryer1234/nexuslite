@@ -54,3 +54,13 @@ server/data/
 # Database files
 *.sqlite
 *.db
+server/keystores/
+
+# PM2 ecosystem config (contains passwords)
+server/scripts/ecosystem.config.js
+
+# Keystores directory
+server/keystores/
+
+# Analytics data
+server/data/crime_analytics.json

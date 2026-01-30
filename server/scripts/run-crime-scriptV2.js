@@ -1,11 +1,13 @@
 const { exec } = require("child_process");
 const util = require("util");
+const path = require("path");
+const fs = require("fs");
 require("dotenv").config();
 
 const execPromise = util.promisify(exec);
 
 // Chain choice: 0 -> PLS, 1 -> BNB, 2 -> BOTH
-const CHAIN_CHOICE = parseInt(process.env.CHAIN_CHOICE);
+const CHAIN_CHOICE = parseInt(process.env.CHAIN_CHOICE || "0");
 
 // Randomization settings
 const RANDOMIZE_CRIMES = process.env.RANDOMIZE_CRIMES === 'true'; // true/false
@@ -34,62 +36,65 @@ function getDelayWithVariance(baseMinutes, varianceMinutes) {
     return totalMinutes * 60 * 1000; // Convert to milliseconds
 }
 
-// Read keystore names and passwords based on CHAIN_CHOICE
-const plsKeystoreNames = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2
-    ? (process.env.PLS_KEYSTORE_NAME ? process.env.PLS_KEYSTORE_NAME.split(",").map((name) => name.trim()) : [])
-    : [];
+// Auto-discover keystores from Foundry directory
+const KEYSTORE_DIR = process.env.KEYSTORE_PATH || path.join(require('os').homedir(), '.foundry', 'keystores');
 
-const bnbKeystoreNames = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2
-    ? (process.env.BNB_KEYSTORE_NAME ? process.env.BNB_KEYSTORE_NAME.split(",").map((name) => name.trim()) : [])
-    : [];
-
-const plsKeystorePasswords = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2
-    ? (process.env.PLS_KEYSTORE_PASSWORD ? process.env.PLS_KEYSTORE_PASSWORD.split(",").map((pw) => pw.trim()) : [])
-    : [];
-
-const bnbKeystorePasswords = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2
-    ? (process.env.BNB_KEYSTORE_PASSWORD ? process.env.BNB_KEYSTORE_PASSWORD.split(",").map((pw) => pw.trim()) : [])
-    : [];
-
-const plsCrimeTypes = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2
-    ? (process.env.PLS_CRIME_TYPE ? process.env.PLS_CRIME_TYPE.split(",").map((val) => parseInt(val.trim())) : [])
-    : [];
-
-const bnbCrimeTypes = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2
-    ? (process.env.BNB_CRIME_TYPE ? process.env.BNB_CRIME_TYPE.split(",").map((val) => parseInt(val.trim())) : [])
-    : [];
-
-// Validation
-if (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) {
-    if (plsKeystoreNames.length === 0) {
-        console.error("Error: At least one PLS keystore name must be provided.");
-        process.exit(1);
-    }
-    if (plsKeystoreNames.length !== plsKeystorePasswords.length) {
-        console.error("Error: PLS keystore names and passwords count must match.");
-        process.exit(1);
-    }
-    // Crime types optional if RANDOMIZE_CRIMES is true
-    if (!RANDOMIZE_CRIMES && plsKeystoreNames.length !== plsCrimeTypes.length) {
-        console.error("Error: PLS keystore names and crime types count must match (or enable RANDOMIZE_CRIMES).");
-        process.exit(1);
+function discoverKeystores() {
+    try {
+        if (!fs.existsSync(KEYSTORE_DIR)) {
+            console.error(`Error: Keystore directory not found: ${KEYSTORE_DIR}`);
+            return [];
+        }
+        const files = fs.readdirSync(KEYSTORE_DIR);
+        const keystores = files.filter(f => {
+            const fullPath = path.join(KEYSTORE_DIR, f);
+            return !f.startsWith('.') && fs.statSync(fullPath).isFile();
+        });
+        console.log(`[Config] Auto-discovered ${keystores.length} keystore(s): ${keystores.join(', ')}`);
+        return keystores;
+    } catch (error) {
+        console.error(`Error reading keystore directory: ${error.message}`);
+        return [];
     }
 }
 
-if (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) {
-    if (bnbKeystoreNames.length === 0) {
-        console.error("Error: At least one BNB keystore name must be provided.");
-        process.exit(1);
-    }
-    if (bnbKeystoreNames.length !== bnbKeystorePasswords.length) {
-        console.error("Error: BNB keystore names and passwords count must match.");
-        process.exit(1);
-    }
-    if (!RANDOMIZE_CRIMES && bnbKeystoreNames.length !== bnbCrimeTypes.length) {
-        console.error("Error: BNB keystore names and crime types count must match (or enable RANDOMIZE_CRIMES).");
-        process.exit(1);
-    }
+// Get password with GLOBAL_PASSWORD fallback
+function getPassword(keystoreName) {
+    const specificPassword = process.env[`${keystoreName.toUpperCase()}_PASSWORD`];
+    if (specificPassword) return specificPassword;
+    return process.env.GLOBAL_PASSWORD || 
+           process.env.PLS_KEYSTORE_PASSWORD?.split(',')[0]?.trim() || '';
 }
+
+// Get crime type - use global or per-wallet settings
+function getCrimeType(keystoreName) {
+    const specificType = process.env[`${keystoreName.toUpperCase()}_CRIME_TYPE`];
+    if (specificType !== undefined) return parseInt(specificType);
+    return parseInt(process.env.PLS_CRIME_TYPE?.split(',')[0]?.trim() || '0');
+}
+
+// Auto-discover all keystores
+const discoveredKeystores = discoverKeystores();
+
+if (discoveredKeystores.length === 0) {
+    console.error("Error: No keystores found in " + KEYSTORE_DIR);
+    process.exit(1);
+}
+
+// Build keystore arrays for each chain
+const plsKeystoreNames = (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
+const bnbKeystoreNames = (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
+const plsKeystorePasswords = plsKeystoreNames.map(name => getPassword(name));
+const bnbKeystorePasswords = bnbKeystoreNames.map(name => getPassword(name));
+const plsCrimeTypes = plsKeystoreNames.map(name => getCrimeType(name));
+const bnbCrimeTypes = bnbKeystoreNames.map(name => getCrimeType(name));
+
+// Validate passwords
+if ((CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) && plsKeystorePasswords.some(p => !p)) {
+    console.error("Error: Password not found for some wallets. Set GLOBAL_PASSWORD or individual passwords.");
+    process.exit(1);
+}
+
 
 // Chain configurations
 const chains = {
@@ -109,8 +114,52 @@ const chains = {
     },
 };
 
+// Analytics API URL (Nexus Lite server)
+const ANALYTICS_API_URL = process.env.ANALYTICS_API_URL || 'http://localhost:4001/api/scripts/crime/record';
+
+// Report crime result to analytics service
+async function reportToAnalytics(wallet, chain, crimeType, result) {
+    try {
+        const http = require('http');
+        const data = JSON.stringify({
+            wallet,
+            chain,
+            crimeType,
+            success: result.success,
+            jailed: result.error?.toLowerCase().includes('jail'),
+            cooldown: result.error?.toLowerCase().includes('cooldown'),
+            error: result.error
+        });
+        
+        const url = new URL(ANALYTICS_API_URL);
+        const options = {
+            hostname: url.hostname,
+            port: url.port || 4001,
+            path: url.pathname,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': data.length
+            }
+        };
+        
+        return new Promise((resolve) => {
+            const req = http.request(options, (res) => {
+                resolve(true);
+            });
+            req.on('error', () => resolve(false));
+            req.write(data);
+            req.end();
+        });
+    } catch (err) {
+        console.error('Failed to report to analytics:', err.message);
+        return false;
+    }
+}
+
 // Function to run makeCrime for a single wallet
 async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType) {
+    let result;
     try {
         const chain = chains[chainName];
         const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8)" ${crimeType}`;
@@ -119,11 +168,16 @@ async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType
             cwd: "./foundry-crime-scripts",
         });
         console.log(`${chainName} makeCrime (crimeType: ${crimeType}) executed successfully for ${keystoreName}`);
-        return { success: true, output: stdout };
+        result = { success: true, output: stdout };
     } catch (error) {
         console.error(`${chainName} makeCrime failed for ${keystoreName}:`, error.message);
-        return { success: false, error: error.message };
+        result = { success: false, error: error.message };
     }
+    
+    // Report to analytics (fire and forget)
+    reportToAnalytics(keystoreName, chainName, crimeType, result);
+    
+    return result;
 }
 
 // Function to schedule makeCrime for a single wallet
