@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import './WalletSelector.css';
 
 /**
@@ -32,7 +33,7 @@ export default function WalletSelector({
     onDeselectAll = () => { },
     loading = false
 }) {
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = usePersistentState('nexus_wallet_selector_expanded', false);
 
     const selectedCount = mode === 'multi' ? selectedWallets.size : (selectedWallet ? 1 : 0);
     const totalCount = wallets.length;

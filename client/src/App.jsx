@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { usePersistentState } from './hooks/usePersistentState'
 import AutomationPage from './pages/AutomationPage'
 import FoundryPage from './pages/FoundryPage'
 import SettingsPage from './pages/SettingsPage'
@@ -6,7 +7,7 @@ import API_BASE from './config/api'
 import './index.css'
 
 function App() {
-  const [activeTab, setActiveTab] = useState('automation')
+  const [activeTab, setActiveTab] = usePersistentState('nexus_active_tab', 'automation')
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [globalPassword, setGlobalPassword] = useState('')
   const [passwordInput, setPasswordInput] = useState('')

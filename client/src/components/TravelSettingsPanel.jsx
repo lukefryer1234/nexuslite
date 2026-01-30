@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { usePersistentState } from '../hooks/usePersistentState';
 import API_BASE from '../config/api';
 import './TravelSettingsPanel.css';
 
@@ -44,7 +45,7 @@ export default function TravelSettingsPanel({ wallets = [], onSettingsChange }) 
             return {};
         }
     });
-    const [expanded, setExpanded] = useState(false);
+    const [expanded, setExpanded] = usePersistentState('nexus_travel_expanded', false);
     const [detecting, setDetecting] = useState({}); // Track which wallets are detecting
     const [saved, setSaved] = useState(false); // Track save button feedback
     
