@@ -115,6 +115,71 @@ npm run dev
 
 Access the application at: **http://localhost:4001**
 
+## Background Automation (PM2)
+
+To run automation scripts 24/7 in the background, use PM2:
+
+### 1. Install PM2
+
+```bash
+npm install -g pm2
+```
+
+### 2. Setup Keystores
+
+Copy your Foundry keystores to the project:
+
+```bash
+mkdir -p server/keystores
+cp ~/.foundry/keystores/* server/keystores/
+```
+
+### 3. Configure PM2
+
+```bash
+cd server/scripts
+cp ecosystem.config.example.js ecosystem.config.js
+```
+
+Edit `ecosystem.config.js` and set your password:
+
+```javascript
+env: {
+  CHAIN_CHOICE: '0',  // 0=PLS, 1=BNB, 2=BOTH
+  GLOBAL_PASSWORD: 'YOUR_KEYSTORE_PASSWORD',
+  KEYSTORE_PATH: '/full/path/to/nexus-lite/server/keystores'
+}
+```
+
+### 4. Start Automation
+
+```bash
+cd server/scripts
+pm2 start ecosystem.config.js
+pm2 save  # Persist processes across reboots
+```
+
+### 5. Monitor Scripts
+
+```bash
+pm2 list                    # View running processes
+pm2 logs lite-crime         # View crime script logs
+pm2 logs lite-killskill     # View kill skill logs
+pm2 stop lite-crime         # Stop a specific script
+pm2 restart all             # Restart all scripts
+```
+
+### PM2 Commands Reference
+
+| Command | Description |
+|---------|-------------|
+| `pm2 list` | Show all running processes |
+| `pm2 logs` | Stream all logs |
+| `pm2 logs <name>` | Stream specific script logs |
+| `pm2 stop <name>` | Stop a script |
+| `pm2 restart <name>` | Restart a script |
+| `pm2 delete all` | Stop and remove all scripts |
+
 ## Usage Guide
 
 ### First-Time Setup
