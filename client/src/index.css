@@ -707,6 +707,63 @@ input::placeholder {
   color: var(--text-tertiary);
 }
 
+/* First Time Setup Info */
+.first-time-info {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--glass-border);
+  text-align: left;
+}
+
+.first-time-info h3 {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.info-step {
+  margin-bottom: 14px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--accent-purple);
+}
+
+.info-step strong {
+  display: block;
+  color: var(--accent-purple);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.info-step p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.info-warning {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(251, 146, 60, 0.1);
+  border: 1px solid rgba(251, 146, 60, 0.3);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.info-warning strong {
+  color: var(--accent-amber);
+}
+
+.info-warning em {
+  color: var(--accent-amber);
+  font-style: normal;
+  font-weight: 600;
+}
+
 /* ===== Offline Screen ===== */
 .offline-message {
   flex: 1;

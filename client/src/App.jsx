@@ -170,7 +170,22 @@ function App() {
               {error && <div className="error">{error}</div>}
               <button type="submit" className="btn-primary">🔓 Unlock All Wallets</button>
             </form>
-            <p className="hint">First time? Enter a new password to set up encryption.</p>
+            
+            <div className="first-time-info">
+              <h3>📋 First Time Setup</h3>
+              <div className="info-step">
+                <strong>Step 1: App Password</strong>
+                <p>Enter a password above. This encrypts your wallet passwords locally and is required each session.</p>
+              </div>
+              <div className="info-step">
+                <strong>Step 2: Foundry Password</strong>
+                <p>When creating wallets, you'll set a Foundry keystore password. This is used by the blockchain scripts.</p>
+              </div>
+              <div className="info-warning">
+                <strong>⚠️ Important:</strong> All Foundry keystores must use the <em>same password</em> for automation to work. 
+                Choose one password for all your wallets when creating them.
+              </div>
+            </div>
           </div>
         </main>
       </div>
