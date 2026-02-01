@@ -57,7 +57,33 @@ Run automated game actions across multiple wallets simultaneously:
 - **Quick Lock** - Manual lock button in header
 - **Encrypted Passwords** - AES-256-GCM encryption
 
-## Prerequisites
+## Quick Install (Recommended)
+
+Run this one command on a fresh Linux system:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/lukefryer1234/nexuslite/main/install.sh | bash
+```
+
+This automatically installs:
+- Node.js v20
+- Foundry (forge/cast)
+- All npm dependencies
+- Builds the client
+
+Then start with:
+```bash
+cd ~/nexus-lite
+./start.sh
+```
+
+Open **http://localhost:4001** in your browser.
+
+---
+
+## Manual Installation
+
+### Prerequisites
 
 1. **Node.js** (v18 or higher)
 2. **Foundry** - Smart contract development toolkit
@@ -67,13 +93,11 @@ Run automated game actions across multiple wallets simultaneously:
    ```
 3. **Game Character** - Your wallet must have a registered character in the Mafia game
 
-## Installation
-
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/lukefryer1234/nexus-lite.git
-cd nexus-lite
+git clone https://github.com/lukefryer1234/nexuslite.git
+cd nexuslite
 ```
 
 ### 2. Install Dependencies
