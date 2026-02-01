@@ -14,6 +14,8 @@ function App() {
   const [serverStatus, setServerStatus] = useState('checking')
   const [error, setError] = useState('')
   const [restarting, setRestarting] = useState(false)
+  const [lockTimeout, setLockTimeout] = usePersistentState('nexus_lock_timeout', 'never')
+  const [unlockTime, setUnlockTime] = useState(null)
 
   const handleRestart = async () => {
     if (!confirm('Restart the server? This will stop all running scripts.')) return
@@ -92,6 +94,8 @@ function App() {
         } else {
           console.warn('[App] No addresses returned from unlock!')
         }
+        // Set unlock time for auto-lock timer
+        setUnlockTime(Date.now())
       } else {
         setError(data.error || 'Failed to unlock')
       }
@@ -104,8 +108,30 @@ function App() {
     await fetch(`${API_BASE}/api/keystore/lock-all`, { method: 'POST' })
     setIsUnlocked(false)
     setGlobalPassword('')
+    setUnlockTime(null)
     localStorage.removeItem('app_global_password')
   }
+
+  // Auto-lock timer
+  useEffect(() => {
+    if (!isUnlocked || lockTimeout === 'never' || !unlockTime) return
+    
+    const timeoutMs = parseInt(lockTimeout) * 60 * 60 * 1000 // Convert hours to ms
+    const lockAt = unlockTime + timeoutMs
+    const remaining = lockAt - Date.now()
+    
+    if (remaining <= 0) {
+      handleLock()
+      return
+    }
+    
+    const timer = setTimeout(() => {
+      handleLock()
+      alert('Session locked due to timeout')
+    }, remaining)
+    
+    return () => clearTimeout(timer)
+  }, [isUnlocked, lockTimeout, unlockTime])
 
   if (serverStatus === 'offline') {
     return (
@@ -177,6 +203,20 @@ function App() {
         </nav>
         <div className="header-controls">
           <span className="status online">● Online</span>
+          <select 
+            className="lock-timeout-select"
+            value={lockTimeout}
+            onChange={(e) => setLockTimeout(e.target.value)}
+            title="Auto-lock timeout"
+          >
+            <option value="1">Lock: 1h</option>
+            <option value="2">Lock: 2h</option>
+            <option value="4">Lock: 4h</option>
+            <option value="8">Lock: 8h</option>
+            <option value="12">Lock: 12h</option>
+            <option value="24">Lock: 24h</option>
+            <option value="never">Never</option>
+          </select>
           <button 
             className="btn-restart" 
             onClick={handleRestart}

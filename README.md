@@ -41,6 +41,22 @@ Run automated game actions across multiple wallets simultaneously:
 - **Training Type** - Choose training method (free bottles recommended)
 - **City Selection** - Configure travel start/end cities
 
+### 🏠 Property Yields
+- **Yield Tracking** - View all owned properties and estimated yields
+- **Time-Based Claiming** - Auto-claim when interval exceeded (configurable: 12h/24h/48h/72h)
+- **Manual Override** - Force claim all yielding properties instantly
+- **Chain Support** - Track PulseChain and BNB Chain properties
+
+### ⛽ Gas Balancer
+- **Auto-Balance** - Automatically maintain minimum gas across all wallets
+- **Manual Transfer** - Quick transfer between wallets
+- **Balance Monitoring** - Real-time balance display
+
+### 🔒 Session Security
+- **Lock Timeout** - Auto-lock session after 1h/2h/4h/8h/12h/24h or Never
+- **Quick Lock** - Manual lock button in header
+- **Encrypted Passwords** - AES-256-GCM encryption
+
 ## Prerequisites
 
 1. **Node.js** (v18 or higher)

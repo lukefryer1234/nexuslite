@@ -87,7 +87,7 @@ if (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) {
   }
 }
 
-// Chain configurations
+// Chain configurations with gas settings
 const chains = {
   BNB: {
     rpcUrl: process.env.BNB_RPC_URL || "https://bsc-dataseed.bnbchain.org",
@@ -98,6 +98,8 @@ const chains = {
     startCities: bnbStartCities,
     endCities: bnbEndCities,
     travelTypes: bnbTravelTypes,
+    maxGasPriceGwei: parseInt(process.env.BNB_MAX_GAS_PRICE_GWEI || "5"),
+    gasPriceGwei: parseInt(process.env.BNB_GAS_PRICE_GWEI || "3"),
   },
   PLS: {
     rpcUrl: process.env.PLS_RPC_URL || "https://rpc-pulsechain.g4mm4.io",
@@ -108,8 +110,21 @@ const chains = {
     startCities: plsStartCities,
     endCities: plsEndCities,
     travelTypes: plsTravelTypes,
+    maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "50"),
+    gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
   },
 };
+
+// Function to check current gas price
+async function getCurrentGasPrice(rpcUrl) {
+  try {
+    const { stdout } = await execPromise(`cast gas-price --rpc-url ${rpcUrl}`);
+    return BigInt(stdout.trim());
+  } catch (error) {
+    console.error('Failed to get gas price:', error.message);
+    return null;
+  }
+}
 
 // Travel type to delay mapping (in hours, converted to milliseconds)
 const travelDelays = {
@@ -123,7 +138,23 @@ const travelDelays = {
 async function runTravel(chainName, keystoreName, keystorePassword, destinationCity, travelType, itemId) {
   try {
     const chain = chains[chainName];
-    const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8,uint8,uint256)" ${destinationCity} ${travelType} ${itemId}`;
+    
+    // Check current gas price against max
+    if (chain.maxGasPriceGwei > 0) {
+      const currentGas = await getCurrentGasPrice(chain.rpcUrl);
+      const maxGasWei = BigInt(chain.maxGasPriceGwei) * BigInt(1e9);
+      
+      if (currentGas && currentGas > maxGasWei) {
+        const currentGwei = Number(currentGas / BigInt(1e9));
+        console.log(`[${chainName}:${keystoreName}] ⏸️ Gas too high: ${currentGwei.toFixed(0)} gwei > ${chain.maxGasPriceGwei} gwei max. Skipping travel.`);
+        return { success: false, error: `Gas price too high: ${currentGwei.toFixed(0)} gwei` };
+      }
+    }
+    
+    // Build command with gas price limit
+    const gasPriceWei = chain.gasPriceGwei * 1e9;
+    const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
+    const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8,uint8,uint256)" ${destinationCity} ${travelType} ${itemId}`;
 
     const { stdout, stderr } = await execPromise(command, { cwd: "./foundry-travel-scripts" });
     console.log(`${chainName} travel to city ${destinationCity} (travelType: ${travelType}, itemId: ${itemId}) executed successfully for ${keystoreName}`);

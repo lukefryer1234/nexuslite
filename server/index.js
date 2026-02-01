@@ -17,6 +17,8 @@ const ScriptSchedulerService = require('./services/ScriptSchedulerService');
 const keystoreRoutes = require('./routes/keystore');
 const walletRoutes = require('./routes/wallet');
 const settingsRoutes = require('./routes/settings');
+const gasBalanceRoutes = require('./routes/gasBalanceApi');
+const yieldRoutes = require('./routes/yieldApi');
 const { createScriptRoutes } = require('./routes/scripts');
 const { createLegacyRoutes } = require('./routes/legacy');
 
@@ -52,6 +54,8 @@ const schedulerService = new ScriptSchedulerService({
 app.use('/api/keystore', keystoreRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/gas-balance', gasBalanceRoutes);
+app.use('/api/yield', yieldRoutes);
 app.use('/api/scripts', createScriptRoutes(schedulerService));
 app.use('/api', createLegacyRoutes(schedulerService));
 

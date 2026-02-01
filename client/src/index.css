@@ -626,6 +626,30 @@ input::placeholder {
   border-color: var(--accent-red);
 }
 
+/* Lock Timeout Select */
+.lock-timeout-select {
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-width: 90px;
+}
+
+.lock-timeout-select:hover {
+  border-color: var(--glass-border-hover);
+  color: var(--text-primary);
+}
+
+.lock-timeout-select:focus {
+  border-color: var(--accent-purple);
+  box-shadow: 0 0 0 2px var(--accent-purple-glow);
+}
+
 /* ===== Main Content ===== */
 .app-main {
   flex: 1;

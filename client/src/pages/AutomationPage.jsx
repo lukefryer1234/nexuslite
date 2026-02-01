@@ -6,6 +6,8 @@ import CooldownTracker from '../components/CooldownTracker';
 import WalletResultsPanel from '../components/WalletResultsPanel';
 import TravelSettingsPanel from '../components/TravelSettingsPanel';
 import CrimeAnalyticsPanel from '../components/CrimeAnalyticsPanel';
+import GasBalancerPanel from '../components/GasBalancerPanel';
+import YieldPanel from '../components/YieldPanel';
 import API_BASE from '../config/api';
 import './AutomationPage.css';
 
@@ -410,6 +412,12 @@ export default function AutomationPage() {
 
             {/* Cooldown Tracker - centralized view of all wallet cooldowns */}
             <CooldownTracker wallets={getSelectedWalletObjects()} />
+
+            {/* Yield Panel - property yield tracking and claiming */}
+            <YieldPanel />
+
+            {/* Gas Balancer - manage native token balances across wallets */}
+            <GasBalancerPanel wallets={selectedKeystores} />
 
             {/* Travel Settings - per-wallet configuration */}
             <TravelSettingsPanel

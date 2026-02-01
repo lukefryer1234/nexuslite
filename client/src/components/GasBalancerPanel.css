@@ -1,0 +1,370 @@
+/**
+ * GasBalancerPanel Styles
+ * Similar styling to AutoRestartToggle
+ */
+
+.gas-balancer-panel {
+    background: linear-gradient(135deg, rgba(30, 30, 40, 0.95), rgba(20, 20, 30, 0.95));
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.gas-balancer-panel:hover {
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.1);
+}
+
+.gas-balancer-panel.warning {
+    border-color: rgba(245, 158, 11, 0.5);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(20, 20, 30, 0.95));
+}
+
+/* Main Row */
+.gas-balancer-panel .panel-main {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+}
+
+.gas-balancer-panel .panel-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+
+.gas-balancer-panel .panel-icon {
+    font-size: 1.5rem;
+}
+
+.gas-balancer-panel .panel-text-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.gas-balancer-panel .panel-label {
+    font-weight: 600;
+    color: #f3f4f6;
+    font-size: 0.95rem;
+}
+
+.gas-balancer-panel .panel-status {
+    font-size: 0.75rem;
+    color: #9ca3af;
+}
+
+.gas-balancer-panel .panel-badges {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.gas-balancer-panel .badge {
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.gas-balancer-panel .badge.pls {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+}
+
+.gas-balancer-panel .badge.bnb {
+    background: rgba(241, 196, 15, 0.15);
+    color: #fcd34d;
+}
+
+.gas-balancer-panel .expand-icon {
+    color: #6b7280;
+    font-size: 0.75rem;
+    transition: transform 0.3s ease;
+}
+
+.gas-balancer-panel.expanded .expand-icon {
+    transform: rotate(90deg);
+}
+
+/* Expanded Details */
+.gas-balancer-panel .panel-details {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Thresholds Section */
+.thresholds-section {
+    margin-bottom: 0.75rem;
+}
+
+.thresholds-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.thresholds-header .section-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #e5e7eb;
+}
+
+.thresholds-header .edit-btn,
+.thresholds-header .save-btn,
+.thresholds-header .cancel-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+    border-radius: 4px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: #9ca3af;
+    transition: all 0.2s;
+}
+
+.thresholds-header .edit-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e5e7eb;
+}
+
+.thresholds-header .save-btn {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+}
+
+.thresholds-header .save-btn:hover {
+    background: rgba(34, 197, 94, 0.3);
+}
+
+.thresholds-header .cancel-btn {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+    margin-left: 0.25rem;
+}
+
+.thresholds-header .edit-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.thresholds-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.threshold-card {
+    padding: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.threshold-card.pls {
+    border-color: rgba(168, 85, 247, 0.2);
+}
+
+.threshold-card.bnb {
+    border-color: rgba(241, 196, 15, 0.2);
+}
+
+.threshold-card .chain-label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.threshold-card.pls .chain-label {
+    color: #c084fc;
+}
+
+.threshold-card.bnb .chain-label {
+    color: #fcd34d;
+}
+
+.threshold-inputs {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.threshold-inputs .input-group {
+    flex: 1;
+}
+
+.threshold-inputs .input-group label {
+    display: block;
+    font-size: 0.65rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.threshold-inputs .input-group input {
+    width: 100%;
+    padding: 0.35rem 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    color: #e5e7eb;
+    font-size: 0.85rem;
+    font-family: 'Monaco', 'Consolas', monospace;
+}
+
+.threshold-inputs .input-group input:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.threshold-inputs .input-group .value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #e5e7eb;
+    font-family: 'Monaco', 'Consolas', monospace;
+}
+
+/* Balance Grid */
+.balance-grid {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+}
+
+.balance-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 0.5rem 0.75rem;
+    background: rgba(0, 0, 0, 0.3);
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.balance-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.balance-row:last-child {
+    border-bottom: none;
+}
+
+.balance-row .wallet-name {
+    color: #e5e7eb;
+    font-weight: 500;
+}
+
+.balance-row .balance {
+    font-family: 'Monaco', 'Consolas', monospace;
+    text-align: right;
+}
+
+.balance-row .balance.pls {
+    color: #c084fc;
+}
+
+.balance-row .balance.bnb {
+    color: #fcd34d;
+}
+
+.balance-row .balance.low {
+    color: #ef4444;
+    font-weight: bold;
+}
+
+/* Action Buttons */
+.gas-balancer-panel .panel-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.gas-balancer-panel .action-btn {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #e5e7eb;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gas-balancer-panel .action-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.gas-balancer-panel .action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.gas-balancer-panel .action-btn.refresh {
+    background: rgba(107, 114, 128, 0.1);
+    border-color: rgba(107, 114, 128, 0.3);
+}
+
+.gas-balancer-panel .action-btn.pls {
+    background: rgba(168, 85, 247, 0.1);
+    border-color: rgba(168, 85, 247, 0.3);
+    color: #c084fc;
+}
+
+.gas-balancer-panel .action-btn.pls:hover:not(:disabled) {
+    background: rgba(168, 85, 247, 0.2);
+    border-color: rgba(168, 85, 247, 0.5);
+}
+
+.gas-balancer-panel .action-btn.bnb {
+    background: rgba(241, 196, 15, 0.1);
+    border-color: rgba(241, 196, 15, 0.3);
+    color: #fcd34d;
+}
+
+.gas-balancer-panel .action-btn.bnb:hover:not(:disabled) {
+    background: rgba(241, 196, 15, 0.2);
+    border-color: rgba(241, 196, 15, 0.5);
+}
+
+/* Warning & Info */
+.gas-balancer-panel .warning-message {
+    margin-top: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: #f87171;
+    text-align: center;
+}
+
+.gas-balancer-panel .info-note {
+    margin-top: 0.75rem;
+    font-size: 0.7rem;
+    color: #6b7280;
+    text-align: center;
+}

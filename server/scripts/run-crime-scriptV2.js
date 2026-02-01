@@ -96,7 +96,7 @@ if ((CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) && plsKeystorePasswords.some(p =>
 }
 
 
-// Chain configurations
+// Chain configurations with gas settings
 const chains = {
     BNB: {
         rpcUrl: process.env.BNB_RPC_URL || "https://bsc-dataseed.bnbchain.org",
@@ -104,6 +104,8 @@ const chains = {
         keystoreNames: bnbKeystoreNames,
         keystorePasswords: bnbKeystorePasswords,
         crimeTypes: bnbCrimeTypes,
+        maxGasPriceGwei: parseInt(process.env.BNB_MAX_GAS_PRICE_GWEI || "5"),
+        gasPriceGwei: parseInt(process.env.BNB_GAS_PRICE_GWEI || "3"),
     },
     PLS: {
         rpcUrl: process.env.PLS_RPC_URL || "https://rpc-pulsechain.g4mm4.io",
@@ -111,6 +113,8 @@ const chains = {
         keystoreNames: plsKeystoreNames,
         keystorePasswords: plsKeystorePasswords,
         crimeTypes: plsCrimeTypes,
+        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "50"),
+        gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
     },
 };
 
@@ -157,12 +161,39 @@ async function reportToAnalytics(wallet, chain, crimeType, result) {
     }
 }
 
+// Function to check current gas price
+async function getCurrentGasPrice(rpcUrl) {
+    try {
+        const { stdout } = await execPromise(`cast gas-price --rpc-url ${rpcUrl}`);
+        return BigInt(stdout.trim());
+    } catch (error) {
+        console.error('Failed to get gas price:', error.message);
+        return null;
+    }
+}
+
 // Function to run makeCrime for a single wallet
 async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType) {
     let result;
     try {
         const chain = chains[chainName];
-        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8)" ${crimeType}`;
+        
+        // Check current gas price against max
+        if (chain.maxGasPriceGwei > 0) {
+            const currentGas = await getCurrentGasPrice(chain.rpcUrl);
+            const maxGasWei = BigInt(chain.maxGasPriceGwei) * BigInt(1e9);
+            
+            if (currentGas && currentGas > maxGasWei) {
+                const currentGwei = Number(currentGas / BigInt(1e9));
+                console.log(`[${chainName}:${keystoreName}] ⏸️ Gas too high: ${currentGwei.toFixed(0)} gwei > ${chain.maxGasPriceGwei} gwei max. Skipping.`);
+                return { success: false, error: `Gas price too high: ${currentGwei.toFixed(0)} gwei` };
+            }
+        }
+        
+        // Build command with gas price limit
+        const gasPriceWei = chain.gasPriceGwei * 1e9;
+        const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
+        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8)" ${crimeType}`;
 
         const { stdout, stderr } = await execPromise(command, {
             cwd: "./foundry-crime-scripts",

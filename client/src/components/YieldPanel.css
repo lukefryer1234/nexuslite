@@ -1,0 +1,269 @@
+/* ===== Yield Panel ===== */
+.yield-panel {
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.yield-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.yield-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.yield-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.yield-controls select {
+  padding: 6px 12px;
+  font-size: 12px;
+  background: var(--bg-tertiary);
+  min-width: 100px;
+}
+
+/* Summary Stats */
+.yield-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.yield-stat {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+  transition: all var(--transition-fast);
+}
+
+.yield-stat:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.yield-stat.highlight {
+  border-color: var(--accent-purple);
+  background: rgba(168, 85, 247, 0.1);
+}
+
+.yield-stat.highlight-gold {
+  border-color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.yield-stat-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.yield-stat.highlight .yield-stat-value {
+  color: var(--accent-purple);
+}
+
+.yield-stat.highlight-gold .yield-stat-value {
+  color: var(--accent-amber);
+}
+
+.yield-stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Wallet Cards */
+.yield-wallets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.yield-wallet-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  transition: all var(--transition-fast);
+}
+
+.yield-wallet-card:hover {
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.yield-wallet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.wallet-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.wallet-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-claim,
+.btn-claim-all {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  border: none;
+}
+
+.btn-claim {
+  background: linear-gradient(135deg, var(--accent-green), #16a34a);
+  color: white;
+}
+
+.btn-claim:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btn-claim:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-claim-all {
+  background: linear-gradient(135deg, var(--accent-amber), #d97706);
+  color: white;
+}
+
+.btn-claim-all:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btn-claim-all:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Wallet Stats */
+.yield-wallet-stats {
+  padding: 12px 16px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row.highlight {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.text-green {
+  color: var(--accent-green);
+}
+
+.text-amber {
+  color: var(--accent-amber);
+}
+
+.text-gold {
+  color: #fbbf24;
+  font-weight: 700;
+}
+
+.yield-wallet-loading {
+  padding: 20px;
+  text-align: center;
+  color: var(--text-tertiary);
+  font-size: 13px;
+}
+
+/* Property Details */
+.yield-properties {
+  padding: 8px 16px 16px;
+  border-top: 1px solid var(--glass-border);
+  max-height: 150px;
+  overflow-y: auto;
+}
+
+.yield-property {
+  display: grid;
+  grid-template-columns: 80px 1fr 70px 60px;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.yield-property:last-child {
+  border-bottom: none;
+}
+
+.prop-stage {
+  font-weight: 600;
+  color: var(--accent-purple);
+}
+
+.prop-city {
+  color: var(--text-tertiary);
+}
+
+.prop-yield {
+  text-align: right;
+  color: var(--accent-amber);
+  font-weight: 500;
+}
+
+.prop-status {
+  text-align: right;
+  color: var(--text-tertiary);
+}
+
+.prop-status.ready {
+  color: var(--accent-green);
+  font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .yield-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .yield-wallets {
+    grid-template-columns: 1fr;
+  }
+}

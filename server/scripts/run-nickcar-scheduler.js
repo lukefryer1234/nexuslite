@@ -51,27 +51,58 @@ const bnbKeystoreNames = (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) ? discovered
 const plsKeystorePasswords = plsKeystoreNames.map(name => getPassword(name));
 const bnbKeystorePasswords = bnbKeystoreNames.map(name => getPassword(name));
 
-// Chain configurations
+// Chain configurations with gas settings
 const chains = {
     PLS: {
         rpcUrl: process.env.PLS_RPC_URL || "https://rpc-pulsechain.g4mm4.io",
         script: "script/PLSNickCar.s.sol:PLSNickCar",
         keystoreNames: plsKeystoreNames,
         keystorePasswords: plsKeystorePasswords,
+        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "50"),
+        gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
     },
     BNB: {
         rpcUrl: process.env.BNB_RPC_URL || "https://bsc-dataseed.bnbchain.org",
         script: "script/BNBNickCar.s.sol:BNBNickCar",
         keystoreNames: bnbKeystoreNames,
         keystorePasswords: bnbKeystorePasswords,
+        maxGasPriceGwei: parseInt(process.env.BNB_MAX_GAS_PRICE_GWEI || "5"),
+        gasPriceGwei: parseInt(process.env.BNB_GAS_PRICE_GWEI || "3"),
     },
 };
+
+// Function to check current gas price
+async function getCurrentGasPrice(rpcUrl) {
+    try {
+        const { stdout } = await execPromise(`cast gas-price --rpc-url ${rpcUrl}`);
+        return BigInt(stdout.trim());
+    } catch (error) {
+        console.error('Failed to get gas price:', error.message);
+        return null;
+    }
+}
 
 // Run nick car for a wallet
 async function runNickCar(chainName, keystoreName, keystorePassword) {
     try {
         const chain = chains[chainName];
-        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}`;
+        
+        // Check current gas price against max
+        if (chain.maxGasPriceGwei > 0) {
+            const currentGas = await getCurrentGasPrice(chain.rpcUrl);
+            const maxGasWei = BigInt(chain.maxGasPriceGwei) * BigInt(1e9);
+            
+            if (currentGas && currentGas > maxGasWei) {
+                const currentGwei = Number(currentGas / BigInt(1e9));
+                console.log(`[${chainName}:${keystoreName}] ⏸️ Gas too high: ${currentGwei.toFixed(0)} gwei > ${chain.maxGasPriceGwei} gwei max. Skipping.`);
+                return { success: false, error: `Gas price too high: ${currentGwei.toFixed(0)} gwei` };
+            }
+        }
+        
+        // Build command with gas price limit
+        const gasPriceWei = chain.gasPriceGwei * 1e9;
+        const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
+        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag}`;
 
         console.log(`[${chainName}] 🚗 Attempting to nick car for ${keystoreName}...`);
         const { stdout, stderr } = await execPromise(command, {
