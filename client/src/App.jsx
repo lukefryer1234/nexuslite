@@ -164,7 +164,7 @@ function App() {
                 type="password"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
-                placeholder="Enter global password"
+                placeholder="Enter or create your app password"
                 autoFocus
               />
               {error && <div className="error">{error}</div>}
