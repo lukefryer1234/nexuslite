@@ -2,14 +2,26 @@ import { useState, useEffect } from 'react'
 import API_BASE from '../config/api'
 import './YieldPanel.css'
 
-const WALLETS = ['Mum', 'MGB', '36c1', 'Jigsaw']
-
 export default function YieldPanel() {
   const [chain, setChain] = useState('pulsechain')
   const [yieldData, setYieldData] = useState({})
   const [loading, setLoading] = useState(false)
   const [claiming, setClaiming] = useState(null)
   const [config, setConfig] = useState({ claimIntervalHours: 24 })
+  const [wallets, setWallets] = useState([])
+
+  // Load wallets from API
+  const loadWallets = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/keystore/list`)
+      const json = await res.json()
+      if (json.success && json.wallets) {
+        setWallets(json.wallets.map(w => w.name))
+      }
+    } catch (err) {
+      console.error('Failed to load wallets:', err)
+    }
+  }
 
   // Load addresses from localStorage
   const getAddress = (name) => {
@@ -21,7 +33,7 @@ export default function YieldPanel() {
     setLoading(true)
     const data = {}
     
-    for (const wallet of WALLETS) {
+    for (const wallet of wallets) {
       const address = getAddress(wallet)
       if (!address) continue
       
@@ -54,9 +66,15 @@ export default function YieldPanel() {
   }
 
   useEffect(() => {
+    loadWallets()
     fetchConfig()
-    fetchYieldStatus()
-  }, [chain])
+  }, [])
+
+  useEffect(() => {
+    if (wallets.length > 0) {
+      fetchYieldStatus()
+    }
+  }, [chain, wallets])
 
   // Claim yields for a wallet
   const handleClaim = async (wallet, force = false) => {
@@ -159,7 +177,7 @@ export default function YieldPanel() {
 
       {/* Wallet Cards */}
       <div className="yield-wallets">
-        {WALLETS.map(wallet => {
+        {wallets.map(wallet => {
           const data = yieldData[wallet]
           const address = getAddress(wallet)
           

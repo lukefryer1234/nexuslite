@@ -197,8 +197,8 @@ env: {
 > ```javascript
 > env: {
 >   GLOBAL_PASSWORD: 'default_password',
->   MUM_PASSWORD: 'different_password',      // For wallet named "Mum"
->   WALLET2_PASSWORD: 'another_password'     // For wallet named "wallet2"
+>   MYWALLET_PASSWORD: 'different_password',   // For wallet named "MyWallet"
+>   WALLET2_PASSWORD: 'another_password'       // For wallet named "wallet2"
 > }
 > ```
 
