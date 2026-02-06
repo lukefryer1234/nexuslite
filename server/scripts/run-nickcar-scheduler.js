@@ -56,6 +56,59 @@ async function getPlayerCity(address, chainName, rpcUrl) {
     }
 }
 
+// Default target city for auto-travel (New York = 0)
+const DEFAULT_TARGET_CITY = 0;
+// Default travel type (0=train, 1=car, 2=airplane) - train is safest/cheapest
+const DEFAULT_TRAVEL_TYPE = 0;
+// Default item ID for travel (0 = no special item needed for train)
+const DEFAULT_ITEM_ID = 0;
+
+// Travel delays based on travel type (in ms)
+const TRAVEL_DELAYS = {
+    0: (4 * 60 + 5) * 60 * 1000, // TRAIN: 4 hours + 5 mins buffer
+    1: (2 * 60 + 5) * 60 * 1000, // CAR: 2 hours + 5 mins buffer  
+    2: (1 * 60 + 5) * 60 * 1000, // AIRPLANE: 1 hour + 5 mins buffer
+};
+
+// Travel forge scripts per chain
+const TRAVEL_SCRIPTS = {
+    PLS: 'script/PLSTravel.s.sol:PLSTravel',
+    BNB: 'script/BNBTravel.s.sol:BNBTravel'
+};
+
+// Travel player to a specific city
+async function travelToCity(chainName, keystoreName, keystorePassword, targetCity = DEFAULT_TARGET_CITY) {
+    try {
+        const chain = chains[chainName];
+        const travelType = DEFAULT_TRAVEL_TYPE;
+        const itemId = DEFAULT_ITEM_ID;
+        
+        // Build travel command
+        const gasPriceWei = chain.gasPriceGwei * 1e9;
+        const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
+        const command = `forge script ${TRAVEL_SCRIPTS[chainName]} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8,uint8,uint256)" ${targetCity} ${travelType} ${itemId}`;
+
+        console.log(`[${chainName}:${keystoreName}] ✈️ Auto-traveling to ${CITY_NAMES[targetCity]}...`);
+        const { stdout, stderr } = await execPromise(command, { 
+            cwd: "./foundry-travel-scripts",
+            timeout: 120000 // 2 minute timeout for travel tx
+        });
+        
+        console.log(`[${chainName}:${keystoreName}] ✅ Travel initiated to ${CITY_NAMES[targetCity]}`);
+        return { 
+            success: true, 
+            travelType,
+            delay: TRAVEL_DELAYS[travelType],
+            targetCity,
+            targetCityName: CITY_NAMES[targetCity]
+        };
+    } catch (error) {
+        const errMsg = error.message || '';
+        console.error(`[${chainName}:${keystoreName}] ❌ Auto-travel failed:`, errMsg.substring(0, 100));
+        return { success: false, error: errMsg };
+    }
+}
+
 // Chain choice: 0 -> PLS, 1 -> BNB, 2 -> BOTH
 const CHAIN_CHOICE = parseInt(process.env.CHAIN_CHOICE || "0");
 
@@ -160,8 +213,23 @@ async function runNickCar(chainName, keystoreName, keystorePassword) {
             const cityInfo = await getPlayerCity(walletAddress, chainName, chain.rpcUrl);
             if (cityInfo.success) {
                 if (cityInfo.cityId > 5) {
-                    console.log(`[${chainName}:${keystoreName}] 🏙️ In ${cityInfo.cityName} (city ${cityInfo.cityId}) - nick car only works in cities 0-5. Skipping.`);
-                    return { success: false, wrongCity: true, cityId: cityInfo.cityId, cityName: cityInfo.cityName };
+                    console.log(`[${chainName}:${keystoreName}] 🏙️ In ${cityInfo.cityName} (city ${cityInfo.cityId}) - need to travel to valid city`);
+                    
+                    // Auto-travel to New York (city 0)
+                    const travelResult = await travelToCity(chainName, keystoreName, keystorePassword, DEFAULT_TARGET_CITY);
+                    if (travelResult.success) {
+                        // Return traveling status with delay
+                        return { 
+                            success: false, 
+                            traveling: true, 
+                            travelDelay: travelResult.delay,
+                            targetCity: travelResult.targetCity,
+                            targetCityName: travelResult.targetCityName
+                        };
+                    } else {
+                        // Travel failed, retry later
+                        return { success: false, wrongCity: true, cityId: cityInfo.cityId, cityName: cityInfo.cityName };
+                    }
                 }
                 console.log(`[${chainName}:${keystoreName}] 📍 City: ${cityInfo.cityName} (${cityInfo.cityId}) ✓`);
             } else {
@@ -212,17 +280,28 @@ function scheduleWallet(chainName, keystoreName, keystorePassword) {
 
         // Delay calculation:
         // - Jailed: 5 minutes (short retry)
-        // - Wrong city: 60 minutes (wait for travel)
+        // - Traveling: use travel delay + buffer (wait for travel to complete)
+        // - Wrong city (travel failed): 60 minutes retry
         // - Normal: 31 minutes (standard cooldown)
         let delay = COOLDOWN_MS;
+        let reason = '';
+        
         if (result.jailed) {
             delay = 5 * 60 * 1000; // 5 min
+            reason = 'jailed';
+        } else if (result.traveling) {
+            // Use travel delay + 5 minute buffer to ensure we're at destination
+            delay = result.travelDelay + (5 * 60 * 1000);
+            reason = `traveling to ${result.targetCityName}`;
         } else if (result.wrongCity) {
-            delay = 60 * 60 * 1000; // 1 hour - player needs to travel
+            delay = 60 * 60 * 1000; // 1 hour - travel failed
+            reason = 'travel failed';
+        } else if (result.success) {
+            reason = 'cooldown';
         }
 
         const nextRun = new Date(Date.now() + delay);
-        console.log(`[${chainName}] 🚗 Next nick car for ${keystoreName}: ${nextRun.toISOString()} (${Math.round(delay / 60000)}m)`);
+        console.log(`[${chainName}] 🚗 Next nick car for ${keystoreName}: ${nextRun.toISOString()} (${Math.round(delay / 60000)}m)${reason ? ` - ${reason}` : ''}`);
         setTimeout(runAndReschedule, delay);
     }
 
