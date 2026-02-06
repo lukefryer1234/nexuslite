@@ -144,4 +144,54 @@ router.get('/cooldowns/:address', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/game/jail/:address
+ * Check if player is in jail and get remaining time
+ */
+router.get('/jail/:address', async (req, res) => {
+    const { address } = req.params;
+    const chain = req.query.chain || 'pulsechain';
+    const cacheKey = `jail:${address}:${chain}`;
+    
+    // Check cache first (shorter TTL for jail status)
+    const cached = cooldownCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < 15000) { // 15 second cache
+        return res.json(cached.data);
+    }
+    
+    const apiBase = GAME_API_URLS[chain] || GAME_API_URLS.pulsechain;
+    
+    try {
+        const response = await fetchWithRetry(`${apiBase}/player/${address}`);
+        
+        if (!response.ok) {
+            return res.json({ address, chain, inJail: false, error: 'Player not found' });
+        }
+        
+        const playerData = await response.json();
+        const now = Math.floor(Date.now() / 1000);
+        
+        // Check jail status - common field names
+        const jailUntil = playerData.jailUntil || playerData.jailReleaseTime || playerData.jail || 0;
+        const inJail = jailUntil > now;
+        const secondsRemaining = inJail ? jailUntil - now : 0;
+        
+        const result = {
+            address,
+            chain,
+            inJail,
+            secondsRemaining,
+            releaseTime: inJail ? new Date(jailUntil * 1000).toISOString() : null,
+            playerName: playerData.name || null
+        };
+        
+        cooldownCache.set(cacheKey, { data: result, timestamp: Date.now() });
+        res.json(result);
+        
+    } catch (err) {
+        logger.warn(`Jail check failed for ${address.slice(0, 8)}...`, { chain, error: err.message });
+        res.json({ address, chain, inJail: false, error: 'API unavailable' });
+    }
+});
+
 module.exports = router;
