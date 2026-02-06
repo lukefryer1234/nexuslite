@@ -190,19 +190,7 @@ async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType
     try {
         const chain = chains[chainName];
         
-        // Check current gas price against max
-        if (chain.maxGasPriceGwei > 0) {
-            const currentGas = await getCurrentGasPrice(chain.rpcUrl);
-            const maxGasWei = BigInt(chain.maxGasPriceGwei) * BigInt(1e9);
-            
-            if (currentGas && currentGas > maxGasWei) {
-                const currentGwei = Number(currentGas / BigInt(1e9));
-                console.log(`[${chainName}:${keystoreName}] ⏸️ Gas too high: ${currentGwei.toFixed(0)} gwei > ${chain.maxGasPriceGwei} gwei max. Skipping.`);
-                return { success: false, error: `Gas price too high: ${currentGwei.toFixed(0)} gwei` };
-            }
-        }
-        
-        // Build command with gas price limit
+        // Build command with gas price limit (--with-gas-price caps the price we pay)
         const gasPriceWei = chain.gasPriceGwei * 1e9;
         const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
         const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8)" ${crimeType}`;
@@ -284,7 +272,31 @@ function startScheduler() {
     }
 
     console.log("Crime Scheduler started successfully.");
+    
+    // Hourly gas price logging for monitoring
+    async function logGasPrices() {
+        const timestamp = new Date().toISOString();
+        console.log(`\n⛽ [${timestamp}] HOURLY GAS REPORT:`);
+        
+        if (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) {
+            const plsGas = await getCurrentGasPrice(chains.PLS.rpcUrl);
+            if (plsGas) {
+                const plsGwei = Number(plsGas / BigInt(1e9));
+                console.log(`   PLS: ${plsGwei.toFixed(0)} gwei (limit: ${chains.PLS.gasPriceGwei} gwei)`);
+            }
+        }
+        if (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) {
+            const bnbGas = await getCurrentGasPrice(chains.BNB.rpcUrl);
+            if (bnbGas) {
+                const bnbGwei = Number(bnbGas / BigInt(1e9));
+                console.log(`   BNB: ${bnbGwei.toFixed(2)} gwei (limit: ${chains.BNB.gasPriceGwei} gwei)`);
+            }
+        }
+    }
+    
+    // Log gas prices every hour
+    logGasPrices(); // Initial log
+    setInterval(logGasPrices, 60 * 60 * 1000); // Hourly
 }
 
 startScheduler();
-

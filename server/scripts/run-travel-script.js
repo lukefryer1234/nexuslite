@@ -185,19 +185,7 @@ async function runTravel(chainName, keystoreName, keystorePassword, destinationC
   try {
     const chain = chains[chainName];
     
-    // Check current gas price against max
-    if (chain.maxGasPriceGwei > 0) {
-      const currentGas = await getCurrentGasPrice(chain.rpcUrl);
-      const maxGasWei = BigInt(chain.maxGasPriceGwei) * BigInt(1e9);
-      
-      if (currentGas && currentGas > maxGasWei) {
-        const currentGwei = Number(currentGas / BigInt(1e9));
-        console.log(`[${chainName}:${keystoreName}] ⏸️ Gas too high: ${currentGwei.toFixed(0)} gwei > ${chain.maxGasPriceGwei} gwei max. Skipping travel.`);
-        return { success: false, error: `Gas price too high: ${currentGwei.toFixed(0)} gwei` };
-      }
-    }
-    
-    // Build command with gas price limit
+    // Build command with gas price limit (--with-gas-price caps the price we pay)
     const gasPriceWei = chain.gasPriceGwei * 1e9;
     const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
     const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8,uint8,uint256)" ${destinationCity} ${travelType} ${itemId}`;

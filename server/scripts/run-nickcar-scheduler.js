@@ -195,18 +195,6 @@ async function runNickCar(chainName, keystoreName, keystorePassword) {
     try {
         const chain = chains[chainName];
         
-        // Check current gas price against max
-        if (chain.maxGasPriceGwei > 0) {
-            const currentGas = await getCurrentGasPrice(chain.rpcUrl);
-            const maxGasWei = BigInt(chain.maxGasPriceGwei) * BigInt(1e9);
-            
-            if (currentGas && currentGas > maxGasWei) {
-                const currentGwei = Number(currentGas / BigInt(1e9));
-                console.log(`[${chainName}:${keystoreName}] ⏸️ Gas too high: ${currentGwei.toFixed(0)} gwei > ${chain.maxGasPriceGwei} gwei max. Skipping.`);
-                return { success: false, error: `Gas price too high: ${currentGwei.toFixed(0)} gwei` };
-            }
-        }
-        
         // City detection - nick car only works in cities 0-5
         const walletAddress = await getWalletAddress(keystoreName, keystorePassword);
         if (walletAddress) {
