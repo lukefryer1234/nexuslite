@@ -152,9 +152,9 @@ export default function AutomationPage() {
                     allLogs.push(...logArray);
                 } catch (e) { /* ignore individual fetch errors */ }
             }
-            // Sort by time and take last 50
+            // Sort by time
             allLogs.sort((a, b) => a.time - b.time);
-            setLogs(allLogs.slice(-50));
+            setLogs(allLogs);
         } catch (err) {
             console.error('Status fetch error:', err);
         }
