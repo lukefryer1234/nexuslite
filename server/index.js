@@ -111,6 +111,12 @@ app.delete('/api/logs', (req, res) => {
     res.json({ success: true, message: 'Logs cleared' });
 });
 
+// Stats API endpoint
+app.get('/api/stats', (req, res) => {
+    const stats = globalLogService.getStats();
+    res.json({ success: true, stats });
+});
+
 // Restart endpoint - gracefully shutdown, systemd will restart
 app.post('/api/restart', (req, res) => {
     logger.info('Restart requested via API');

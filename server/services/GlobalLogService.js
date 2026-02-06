@@ -156,9 +156,23 @@ class GlobalLogService {
             this.io.to('logs').emit('logs:cleared');
         }
     }
+
+    /**
+     * Get stats from StatsService
+     */
+    getStats() {
+        const statsService = require('./StatsService');
+        return statsService.getStats();
+    }
 }
 
 // Singleton instance
 const globalLogService = new GlobalLogService();
+
+// Wire up StatsService to track all log entries
+const statsService = require('./StatsService');
+globalLogService.addListener((entry) => {
+    statsService.recordEvent(entry);
+});
 
 module.exports = globalLogService;
