@@ -8,6 +8,7 @@ import TravelSettingsPanel from '../components/TravelSettingsPanel';
 import CrimeAnalyticsPanel from '../components/CrimeAnalyticsPanel';
 import GasBalancerPanel from '../components/GasBalancerPanel';
 import YieldPanel from '../components/YieldPanel';
+import ServiceStatusDashboard from '../components/ServiceStatusDashboard';
 import API_BASE from '../config/api';
 import './AutomationPage.css';
 
@@ -45,6 +46,8 @@ export default function AutomationPage() {
     const [loading, setLoading] = useState(true);
     const [globalAction, setGlobalAction] = useState(null); // 'starting', 'stopping', 'restarting'
     const [selectedWalletFilter, setSelectedWalletFilter] = useState(null);
+    const [yieldEnabled, setYieldEnabled] = useState(false);
+    const [gasBalancerEnabled, setGasBalancerEnabled] = useState(false);
 
     // Travel settings - per wallet, keyed by wallet name
     const travelSettingsRef = useRef({});
@@ -123,6 +126,20 @@ export default function AutomationPage() {
                 statuses[r.name] = r.status;
             }
             setScriptStatuses(statuses);
+
+            // Fetch Yield config status
+            try {
+                const yieldRes = await fetch(`${API_BASE}/api/yield/config`);
+                const yieldData = await yieldRes.json();
+                setYieldEnabled(yieldData.success && yieldData.config?.enabled);
+            } catch (e) { /* ignore */ }
+
+            // Fetch Gas Balancer status
+            try {
+                const gasRes = await fetch(`${API_BASE}/api/gas-balance/status`);
+                const gasData = await gasRes.json();
+                setGasBalancerEnabled(gasData.success && gasData.status?.enabled);
+            } catch (e) { /* ignore */ }
 
             // Fetch logs from all script types and combine
             const allLogs = [];
@@ -439,6 +456,14 @@ export default function AutomationPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Service Status Dashboard - at-a-glance view of running services */}
+            <ServiceStatusDashboard 
+                scriptStatuses={scriptStatuses}
+                yieldEnabled={yieldEnabled}
+                gasBalancerEnabled={gasBalancerEnabled}
+                onRefresh={fetchAllStatus}
+            />
 
             {/* Cooldown Tracker - centralized view of all wallet cooldowns */}
             <CooldownTracker wallets={getSelectedWalletObjects()} />
