@@ -27,7 +27,7 @@ export default function LogsPage() {
   const [filter, setFilter] = useState('all')
   const [sourceFilter, setSourceFilter] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [scriptTypeFilter, setScriptTypeFilter] = useState('all')
+  const [selectedTypes, setSelectedTypes] = useState(new Set()) // Empty = show all
   const [autoScroll, setAutoScroll] = useState(true)
   const [paused, setPaused] = useState(false)
   const logsEndRef = useRef(null)
@@ -36,18 +36,27 @@ export default function LogsPage() {
   // Get unique sources from logs
   const sources = [...new Set(logs.map(l => l.source))].sort()
 
-  // Script type categories for filtering
+  // Script type categories for filtering (without 'all')
   const SCRIPT_TYPES = [
-    { value: 'all', label: 'All Types' },
-    { value: 'crime', label: '🔪 Crime' },
-    { value: 'nickcar', label: '🚗 Nick Car' },
-    { value: 'killskill', label: '⚔️ Kill Skill' },
-    { value: 'travel', label: '✈️ Travel' },
-    { value: 'yield', label: '🏠 Yield Claim' },
-    { value: 'gas', label: '⛽ Gas Balance' },
-    { value: 'server', label: '🖥️ Server' },
-    { value: 'other', label: '📦 Other' }
+    { value: 'crime', label: '🔪 Crime', short: 'Crm' },
+    { value: 'nickcar', label: '🚗 Nick', short: 'Car' },
+    { value: 'killskill', label: '⚔️ Kill', short: 'Kill' },
+    { value: 'travel', label: '✈️ Travel', short: 'Trv' },
+    { value: 'yield', label: '🏠 Yield', short: 'Yld' },
+    { value: 'gas', label: '⛽ Gas', short: 'Gas' },
+    { value: 'server', label: '🖥️ Server', short: 'Svr' },
+    { value: 'other', label: '📦 Other', short: 'Oth' }
   ]
+
+  // Toggle a type in the selected set
+  const toggleType = (type) => {
+    setSelectedTypes(prev => {
+      const next = new Set(prev)
+      if (next.has(type)) next.delete(type)
+      else next.add(type)
+      return next
+    })
+  }
 
   // Helper to extract script type from source
   const getScriptType = (source) => {
@@ -132,7 +141,7 @@ export default function LogsPage() {
   const filteredLogs = logs.filter(log => {
     if (filter !== 'all' && log.level !== filter) return false
     if (sourceFilter !== 'all' && log.source !== sourceFilter) return false
-    if (scriptTypeFilter !== 'all' && getScriptType(log.source) !== scriptTypeFilter) return false
+    if (selectedTypes.size > 0 && !selectedTypes.has(getScriptType(log.source))) return false
     if (searchQuery && !log.message.toLowerCase().includes(searchQuery.toLowerCase()) && 
         !log.source.toLowerCase().includes(searchQuery.toLowerCase())) return false
     return true
@@ -188,11 +197,23 @@ export default function LogsPage() {
             ))}
           </select>
 
-          <select value={scriptTypeFilter} onChange={(e) => setScriptTypeFilter(e.target.value)} title="Filter by script type">
+          <div className="type-checkboxes">
             {SCRIPT_TYPES.map(t => (
-              <option key={t.value} value={t.value}>{t.label}</option>
+              <label key={t.value} className={`type-checkbox ${selectedTypes.has(t.value) ? 'active' : ''}`} title={t.label}>
+                <input
+                  type="checkbox"
+                  checked={selectedTypes.has(t.value)}
+                  onChange={() => toggleType(t.value)}
+                />
+                {t.short}
+              </label>
             ))}
-          </select>
+            {selectedTypes.size > 0 && (
+              <button className="btn-clear-types" onClick={() => setSelectedTypes(new Set())} title="Clear all filters">
+                ✕
+              </button>
+            )}
+          </div>
 
           <button 
             className={`btn-toggle ${autoScroll ? 'active' : ''}`}
@@ -208,6 +229,15 @@ export default function LogsPage() {
             title={paused ? 'Resume live updates' : 'Pause live updates'}
           >
             {paused ? '▶️ Resume' : '⏸️ Pause'}
+          </button>
+
+          <button className="btn-secondary" onClick={() => {
+            const content = filteredLogs.map(l => 
+              `[${l.timestamp?.split('T')[1]?.split('.')[0] || ''}] [${l.level}] [${l.source}] ${l.message}`
+            ).join('\n')
+            navigator.clipboard.writeText(content)
+          }} title="Copy logs to clipboard">
+            📋 Copy
           </button>
 
           <button className="btn-secondary" onClick={handleExport} title="Export logs">
