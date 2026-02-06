@@ -126,6 +126,52 @@ async function getCurrentGasPrice(rpcUrl) {
   }
 }
 
+// City names for logging
+const CITY_NAMES = {
+  0: 'New York', 1: 'Chicago', 2: 'Las Vegas',
+  3: 'Detroit', 4: 'Los Angeles', 5: 'Miami',
+  6: 'Atlantic City', 7: 'Philadelphia', 8: 'Boston',
+  9: 'San Francisco', 10: 'Houston'
+};
+
+// MAP contract addresses for city detection
+const MAP_CONTRACTS = {
+  PLS: '0xE571Aa670EDeEBd88887eb5687576199652A714F',
+  BNB: '0x1c88060e4509c59b4064A7a9818f64AeC41ef19E'
+};
+
+// Get wallet address from keystore
+async function getWalletAddress(keystoreName, password) {
+  try {
+    const foundryBin = process.env.FOUNDRY_BIN || require('path').join(require('os').homedir(), '.foundry', 'bin');
+    const { stdout } = await execPromise(
+      `${foundryBin}/cast wallet address --account ${keystoreName} --password "${password}"`,
+      { timeout: 10000 }
+    );
+    return stdout.trim();
+  } catch (err) {
+    console.error(`[Config] Failed to get address for ${keystoreName}:`, err.message?.substring(0, 80));
+    return null;
+  }
+}
+
+// Get player's current city
+async function getPlayerCity(address, chainName, rpcUrl) {
+  try {
+    const foundryBin = process.env.FOUNDRY_BIN || require('path').join(require('os').homedir(), '.foundry', 'bin');
+    const addressPadded = address.toLowerCase().replace('0x', '').padStart(64, '0');
+    const calldata = `0x7c5dc38a${addressPadded}`;
+    const { stdout } = await execPromise(
+      `${foundryBin}/cast call ${MAP_CONTRACTS[chainName]} "${calldata}" --rpc-url ${rpcUrl}`,
+      { timeout: 10000 }
+    );
+    const cityId = parseInt(stdout.trim(), 16);
+    return { success: true, cityId, cityName: CITY_NAMES[cityId] || `City ${cityId}` };
+  } catch (err) {
+    return { success: false, error: err.message?.substring(0, 80) };
+  }
+}
+
 // Travel type to delay mapping (in hours, converted to milliseconds)
 const travelDelays = {
   0: (4 * 60 + 5) * 60 * 1000, // TRAIN: 4 hours + 5 mins buffer
@@ -174,10 +220,61 @@ async function runTravel(chainName, keystoreName, keystorePassword, destinationC
 // Function to schedule travel for a single wallet with to-and-fro logic
 function scheduleWallet(chainName, keystoreName, keystorePassword, itemId, startCity, endCity, travelType) {
   let isStartCity = true; // Start by traveling to startCity
+  let initializedPosition = false; // Track if we've verified/moved to start position
 
   async function runAndReschedule() {
-    const destinationCity = isStartCity ? startCity : endCity;
+    const chain = chains[chainName];
+    
+    // On first run, check if player is at startCity - if not, travel there first
+    if (!initializedPosition) {
+      const walletAddress = await getWalletAddress(keystoreName, keystorePassword);
+      if (walletAddress) {
+        const cityInfo = await getPlayerCity(walletAddress, chainName, chain.rpcUrl);
+        if (cityInfo.success) {
+          const cityName = CITY_NAMES[cityInfo.cityId] || `City ${cityInfo.cityId}`;
+          console.log(`[${chainName}:${keystoreName}] 📍 Current city: ${cityName} (${cityInfo.cityId})`);
+          
+          if (cityInfo.cityId !== startCity && cityInfo.cityId !== endCity) {
+            // Not at either travel point - need to travel to startCity first
+            console.log(`[${chainName}:${keystoreName}] 🎯 Not at start/end city - traveling to ${CITY_NAMES[startCity]}...`);
+            const initResult = await runTravel(chainName, keystoreName, keystorePassword, startCity, travelType, itemId);
+            
+            if (initResult.success) {
+              console.log(`[${chainName}:${keystoreName}] ✅ Initial travel to ${CITY_NAMES[startCity]} initiated`);
+              initializedPosition = true;
+              isStartCity = false; // Next destination will be endCity
+              const delay = travelDelays[travelType];
+              console.log(`[${chainName}] ✈️ Next travel for ${keystoreName} to ${CITY_NAMES[endCity]} in ${Math.round(delay / 60000)}m (after arrival)`);
+              setTimeout(runAndReschedule, delay);
+              return;
+            } else {
+              console.log(`[${chainName}:${keystoreName}] ⚠️ Initial travel failed, retrying in 15m...`);
+              setTimeout(runAndReschedule, travelDelays[3]);
+              return;
+            }
+          } else if (cityInfo.cityId === startCity) {
+            // Already at startCity - start normal loop going to endCity
+            console.log(`[${chainName}:${keystoreName}] ✅ Already at ${CITY_NAMES[startCity]} - starting travel loop`);
+            initializedPosition = true;
+            isStartCity = false; // Will travel to endCity
+          } else if (cityInfo.cityId === endCity) {
+            // Already at endCity - start normal loop going to startCity
+            console.log(`[${chainName}:${keystoreName}] ✅ Already at ${CITY_NAMES[endCity]} - starting travel loop`);
+            initializedPosition = true;
+            isStartCity = true; // Will travel to startCity
+          }
+        } else {
+          console.log(`[${chainName}:${keystoreName}] ⚠️ Could not detect city, starting normal loop...`);
+          initializedPosition = true;
+        }
+      } else {
+        console.log(`[${chainName}:${keystoreName}] ⚠️ Could not get wallet address, starting normal loop...`);
+        initializedPosition = true;
+      }
+    }
 
+    // Normal travel loop
+    const destinationCity = isStartCity ? startCity : endCity;
     const result = await runTravel(chainName, keystoreName, keystorePassword, destinationCity, travelType, itemId);
 
     let delay;
@@ -189,14 +286,14 @@ function scheduleWallet(chainName, keystoreName, keystorePassword, itemId, start
       delay = travelDelays[travelType];
       nextDestination = isStartCity ? startCity : endCity;
 
-      console.log(`${chainName} next travel for ${keystoreName} to city ${nextDestination} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes)`);
+      console.log(`${chainName} next travel for ${keystoreName} to ${CITY_NAMES[nextDestination] || `city ${nextDestination}`} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes)`);
     } else {
       // If failed, retry same destination after 15 minutes (don't toggle cities)
       delay = travelDelays[3]; // 15 minutes retry delay
       nextDestination = destinationCity; // Same destination
 
       console.log(
-        `${chainName} RETRY for ${keystoreName} to city ${nextDestination} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes) due to transaction failure`
+        `${chainName} RETRY for ${keystoreName} to ${CITY_NAMES[nextDestination] || `city ${nextDestination}`} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes) due to transaction failure`
       );
     }
 
