@@ -71,7 +71,7 @@ const chains = {
         script: "script/PLSKillSkill.s.sol:PLSKillSkill",
         keystoreNames: plsKeystoreNames,
         keystorePasswords: plsKeystorePasswords,
-        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "50"),
+        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "100"),
         gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
     },
     BNB: {

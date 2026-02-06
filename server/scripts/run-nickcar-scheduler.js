@@ -10,6 +10,52 @@ require("dotenv").config();
 
 const execPromise = util.promisify(exec);
 
+// City names - nick car only works in cities 0-5
+const CITY_NAMES = {
+    0: 'New York', 1: 'Chicago', 2: 'Las Vegas',
+    3: 'Detroit', 4: 'Los Angeles', 5: 'Miami',
+    6: 'Atlantic City', 7: 'Philadelphia', 8: 'Boston',
+    9: 'San Francisco', 10: 'Houston'
+};
+
+// MAP contract addresses for city detection
+const MAP_CONTRACTS = {
+    PLS: '0xE571Aa670EDeEBd88887eb5687576199652A714F',
+    BNB: '0x1c88060e4509c59b4064A7a9818f64AeC41ef19E'
+};
+
+// Get wallet address from keystore
+async function getWalletAddress(keystoreName, password) {
+    try {
+        const foundryBin = process.env.FOUNDRY_BIN || path.join(require('os').homedir(), '.foundry', 'bin');
+        const { stdout } = await execPromise(
+            `${foundryBin}/cast wallet address --account ${keystoreName} --password "${password}"`,
+            { timeout: 10000 }
+        );
+        return stdout.trim();
+    } catch (err) {
+        console.error(`[Config] Failed to get address for ${keystoreName}:`, err.message?.substring(0, 80));
+        return null;
+    }
+}
+
+// Get player's current city
+async function getPlayerCity(address, chainName, rpcUrl) {
+    try {
+        const foundryBin = process.env.FOUNDRY_BIN || path.join(require('os').homedir(), '.foundry', 'bin');
+        const addressPadded = address.toLowerCase().replace('0x', '').padStart(64, '0');
+        const calldata = `0x7c5dc38a${addressPadded}`;
+        const { stdout } = await execPromise(
+            `${foundryBin}/cast call ${MAP_CONTRACTS[chainName]} "${calldata}" --rpc-url ${rpcUrl}`,
+            { timeout: 10000 }
+        );
+        const cityId = parseInt(stdout.trim(), 16);
+        return { success: true, cityId, cityName: CITY_NAMES[cityId] || `City ${cityId}` };
+    } catch (err) {
+        return { success: false, error: err.message?.substring(0, 80) };
+    }
+}
+
 // Chain choice: 0 -> PLS, 1 -> BNB, 2 -> BOTH
 const CHAIN_CHOICE = parseInt(process.env.CHAIN_CHOICE || "0");
 
@@ -67,7 +113,7 @@ const chains = {
         script: "script/PLSNickCar.s.sol:PLSNickCar",
         keystoreNames: plsKeystoreNames,
         keystorePasswords: plsKeystorePasswords,
-        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "50"),
+        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "100"),
         gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
     },
     BNB: {
@@ -105,6 +151,21 @@ async function runNickCar(chainName, keystoreName, keystorePassword) {
                 const currentGwei = Number(currentGas / BigInt(1e9));
                 console.log(`[${chainName}:${keystoreName}] ⏸️ Gas too high: ${currentGwei.toFixed(0)} gwei > ${chain.maxGasPriceGwei} gwei max. Skipping.`);
                 return { success: false, error: `Gas price too high: ${currentGwei.toFixed(0)} gwei` };
+            }
+        }
+        
+        // City detection - nick car only works in cities 0-5
+        const walletAddress = await getWalletAddress(keystoreName, keystorePassword);
+        if (walletAddress) {
+            const cityInfo = await getPlayerCity(walletAddress, chainName, chain.rpcUrl);
+            if (cityInfo.success) {
+                if (cityInfo.cityId > 5) {
+                    console.log(`[${chainName}:${keystoreName}] 🏙️ In ${cityInfo.cityName} (city ${cityInfo.cityId}) - nick car only works in cities 0-5. Skipping.`);
+                    return { success: false, wrongCity: true, cityId: cityInfo.cityId, cityName: cityInfo.cityName };
+                }
+                console.log(`[${chainName}:${keystoreName}] 📍 City: ${cityInfo.cityName} (${cityInfo.cityId}) ✓`);
+            } else {
+                console.log(`[${chainName}:${keystoreName}] ⚠️ Could not detect city, attempting anyway...`);
             }
         }
         
@@ -149,8 +210,16 @@ function scheduleWallet(chainName, keystoreName, keystorePassword) {
     async function runAndReschedule() {
         const result = await runNickCar(chainName, keystoreName, keystorePassword);
 
-        // If jailed, check again in 5 minutes
-        const delay = result.jailed ? 5 * 60 * 1000 : COOLDOWN_MS;
+        // Delay calculation:
+        // - Jailed: 5 minutes (short retry)
+        // - Wrong city: 60 minutes (wait for travel)
+        // - Normal: 31 minutes (standard cooldown)
+        let delay = COOLDOWN_MS;
+        if (result.jailed) {
+            delay = 5 * 60 * 1000; // 5 min
+        } else if (result.wrongCity) {
+            delay = 60 * 60 * 1000; // 1 hour - player needs to travel
+        }
 
         const nextRun = new Date(Date.now() + delay);
         console.log(`[${chainName}] 🚗 Next nick car for ${keystoreName}: ${nextRun.toISOString()} (${Math.round(delay / 60000)}m)`);

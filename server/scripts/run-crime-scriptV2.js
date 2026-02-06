@@ -125,7 +125,7 @@ const chains = {
         keystoreNames: plsKeystoreNames,
         keystorePasswords: plsKeystorePasswords,
         crimeTypes: plsCrimeTypes,
-        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "50"),
+        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "100"),
         gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
     },
 };
