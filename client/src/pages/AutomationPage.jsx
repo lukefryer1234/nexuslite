@@ -463,6 +463,9 @@ export default function AutomationPage() {
                 yieldEnabled={yieldEnabled}
                 gasBalancerEnabled={gasBalancerEnabled}
                 onRefresh={fetchAllStatus}
+                onStartAll={startAllGlobal}
+                onStopAll={stopAllGlobal}
+                globalAction={globalAction}
             />
 
             {/* Cooldown Tracker - centralized view of all wallet cooldowns */}

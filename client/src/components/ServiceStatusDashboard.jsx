@@ -22,7 +22,10 @@ export default function ServiceStatusDashboard({
     scriptStatuses = {}, 
     yieldEnabled = false,
     gasBalancerEnabled = false,
-    onRefresh
+    onRefresh,
+    onStartAll,
+    onStopAll,
+    globalAction = null
 }) {
     const [lastUpdate, setLastUpdate] = useState(new Date());
     
@@ -70,6 +73,28 @@ export default function ServiceStatusDashboard({
                     {onRefresh && (
                         <button className="refresh-btn" onClick={onRefresh} title="Refresh status">
                             🔄
+                        </button>
+                    )}
+                </div>
+                <div className="dashboard-actions">
+                    {onStartAll && (
+                        <button 
+                            className={`action-btn start ${globalAction === 'starting' ? 'loading' : ''}`}
+                            onClick={onStartAll}
+                            disabled={globalAction}
+                            title="Start all scripts on both chains"
+                        >
+                            {globalAction === 'starting' ? '⏳' : '▶'} Start All
+                        </button>
+                    )}
+                    {onStopAll && (
+                        <button 
+                            className={`action-btn stop ${globalAction === 'stopping' ? 'loading' : ''}`}
+                            onClick={onStopAll}
+                            disabled={globalAction}
+                            title="Stop all scripts on both chains"
+                        >
+                            {globalAction === 'stopping' ? '⏳' : '■'} Stop All
                         </button>
                     )}
                 </div>
