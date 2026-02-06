@@ -43,6 +43,7 @@ export default function AutomationPage() {
     // UI state
     const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [globalAction, setGlobalAction] = useState(null); // 'starting', 'stopping', 'restarting'
     const [selectedWalletFilter, setSelectedWalletFilter] = useState(null);
 
     // Travel settings - per wallet, keyed by wallet name
@@ -251,20 +252,36 @@ export default function AutomationPage() {
 
     // Global controls - work across both chains
     const startAllGlobal = async () => {
-        await startAllParallel('pls');
-        await startAllParallel('bnb');
+        setGlobalAction('starting');
+        try {
+            await startAllParallel('pls');
+            await startAllParallel('bnb');
+        } finally {
+            setGlobalAction(null);
+        }
     };
 
     const stopAllGlobal = async () => {
-        await stopAll('pls');
-        await stopAll('bnb');
+        setGlobalAction('stopping');
+        try {
+            await stopAll('pls');
+            await stopAll('bnb');
+        } finally {
+            setGlobalAction(null);
+        }
     };
 
     const restartAllGlobal = async () => {
-        await stopAllGlobal();
-        // Small delay to ensure scripts have stopped
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await startAllGlobal();
+        setGlobalAction('restarting');
+        try {
+            await stopAll('pls');
+            await stopAll('bnb');
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await startAllParallel('pls');
+            await startAllParallel('bnb');
+        } finally {
+            setGlobalAction(null);
+        }
     };
 
     const updateScriptConfig = (chain, scriptName, paramName, value) => {
@@ -447,14 +464,14 @@ export default function AutomationPage() {
                     👛 {keystores.length} wallets
                 </span>
                 <span className="global-label">⚡ All Scripts (Both Chains):</span>
-                <button className="global-btn start" onClick={startAllGlobal}>
-                    ▶ Start All
+                <button className={`global-btn start ${globalAction === 'starting' ? 'loading' : ''}`} onClick={startAllGlobal} disabled={globalAction}>
+                    {globalAction === 'starting' ? '⏳ Starting...' : '▶ Start All'}
                 </button>
-                <button className="global-btn stop" onClick={stopAllGlobal}>
-                    ■ Stop All
+                <button className={`global-btn stop ${globalAction === 'stopping' ? 'loading' : ''}`} onClick={stopAllGlobal} disabled={globalAction}>
+                    {globalAction === 'stopping' ? '⏳ Stopping...' : '■ Stop All'}
                 </button>
-                <button className="global-btn restart" onClick={restartAllGlobal}>
-                    ⟳ Restart All
+                <button className={`global-btn restart ${globalAction === 'restarting' ? 'loading' : ''}`} onClick={restartAllGlobal} disabled={globalAction}>
+                    {globalAction === 'restarting' ? '⏳ Restarting...' : '⟳ Restart All'}
                 </button>
             </div>
 
