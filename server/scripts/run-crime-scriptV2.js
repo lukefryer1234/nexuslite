@@ -210,11 +210,20 @@ async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType
         const { stdout, stderr } = await execPromise(command, {
             cwd: "./foundry-crime-scripts",
         });
-        console.log(`${chainName} makeCrime (crimeType: ${crimeType}) executed successfully for ${keystoreName}`);
+        
+        // Log SUCCESS explicitly for GlobalLogService to capture
+        console.log(`[SUCCESS] ${chainName} makeCrime (crimeType: ${crimeType}) executed successfully for ${keystoreName}`);
         result = { success: true, output: stdout };
     } catch (error) {
-        console.error(`${chainName} makeCrime failed for ${keystoreName}:`, error.message);
-        result = { success: false, error: error.message };
+        const errorMsg = error.message || '';
+        
+        // Check for jail status
+        if (errorMsg.toLowerCase().includes('jail')) {
+            console.log(`[WARN] ${chainName} ${keystoreName} is in jail - skipping crime`);
+        } else {
+            console.log(`[ERROR] ${chainName} makeCrime failed for ${keystoreName}: ${errorMsg.substring(0, 150)}`);
+        }
+        result = { success: false, error: errorMsg };
     }
     
     // Report to analytics (fire and forget)

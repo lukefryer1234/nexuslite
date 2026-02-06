@@ -157,12 +157,17 @@ async function runTravel(chainName, keystoreName, keystorePassword, destinationC
     const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8,uint8,uint256)" ${destinationCity} ${travelType} ${itemId}`;
 
     const { stdout, stderr } = await execPromise(command, { cwd: "./foundry-travel-scripts" });
-    console.log(`${chainName} travel to city ${destinationCity} (travelType: ${travelType}, itemId: ${itemId}) executed successfully for ${keystoreName}`);
+    console.log(`[SUCCESS] ${chainName} travel to city ${destinationCity} (type: ${travelType}) executed for ${keystoreName}`);
 
     return { success: true };
   } catch (error) {
-    console.error(`${chainName} travel failed for ${keystoreName}:`, error.message);
-    return { success: false, error: error.message };
+    const errMsg = error.message || '';
+    if (errMsg.toLowerCase().includes('jail')) {
+      console.log(`[WARN] ${chainName} ${keystoreName} is in jail - skipping travel`);
+    } else {
+      console.log(`[ERROR] ${chainName} travel failed for ${keystoreName}: ${errMsg.substring(0, 100)}`);
+    }
+    return { success: false, error: errMsg };
   }
 }
 

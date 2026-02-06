@@ -126,7 +126,7 @@ class YieldClaimManager {
         const properties = [];
         const baseUrl = API_BASE[chain];
         
-        logger.info(`Fetching properties for ${address}`, { chain });
+        logger.debug(`Fetching properties for ${address.slice(0, 10)}...`);
         
         for (const [cityIdStr, cityName] of Object.entries(CITIES)) {
             const cityId = parseInt(cityIdStr);
@@ -166,7 +166,7 @@ class YieldClaimManager {
             }
         }
         
-        logger.info(`Found ${properties.length} properties`, { chain });
+        logger.debug(`Found ${properties.length} properties`);
         return properties;
     }
 
