@@ -69,6 +69,17 @@ export default function AutomationPage() {
         return Array.from(names);
     }, [logs]);
 
+    // Create wallet address map for display
+    const walletAddressMap = useMemo(() => {
+        const map = {};
+        for (const wallet of wallets) {
+            if (wallet.address) {
+                map[wallet.name] = wallet.address;
+            }
+        }
+        return map;
+    }, [wallets]);
+
     // Fetch available scripts from registry
     const fetchAvailableScripts = useCallback(async () => {
         try {
@@ -100,9 +111,8 @@ export default function AutomationPage() {
 
         try {
             const statusPromises = availableScripts.map(async (script) => {
-                // Map script name to API endpoint
-                const endpoint = script.name; // Use name directly - server uses /api/scripts/crime
-                const res = await fetch(`${API_BASE}/api/${endpoint}/status`);
+                const endpoint = script.name;
+                const res = await fetch(`${API_BASE}/api/scripts/${endpoint}/status`);
                 return { name: script.name, status: await res.json() };
             });
 
@@ -117,7 +127,7 @@ export default function AutomationPage() {
             const allLogs = [];
             for (const script of availableScripts) {
                 try {
-                    const logsRes = await fetch(`${API_BASE}/api/${script.name}/logs`);
+                    const logsRes = await fetch(`${API_BASE}/api/scripts/${script.name}/logs`);
                     const logsData = await logsRes.json();
                     // Handle nested logs structure: {logs: {logs: [...]}} or {logs: [...]}
                     const logArray = logsData.logs?.logs || logsData.logs || [];
@@ -169,7 +179,7 @@ export default function AutomationPage() {
                     };
                 }
 
-                await fetch(`${API_BASE}/api/${endpoint}/start`, {
+                await fetch(`${API_BASE}/api/scripts/${endpoint}/start`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -182,7 +192,7 @@ export default function AutomationPage() {
                     })
                 });
             } else {
-                await fetch(`${API_BASE}/api/${endpoint}/stop`, {
+                await fetch(`${API_BASE}/api/scripts/${endpoint}/stop`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ chain, walletId: effectiveWalletId })
@@ -358,6 +368,9 @@ export default function AutomationPage() {
                 </div>
 
                 <div className="bulk-actions">
+                    <span className="wallet-count-badge" title="Connected wallets">
+                        👛 {keystores.length}
+                    </span>
                     <button
                         className="bulk-btn start"
                         onClick={() => startAllParallel(chain)}
@@ -414,10 +427,10 @@ export default function AutomationPage() {
             <CooldownTracker wallets={getSelectedWalletObjects()} />
 
             {/* Yield Panel - property yield tracking and claiming */}
-            <YieldPanel />
+            <YieldPanel wallets={wallets.filter(w => w.hasAddress)} />
 
-            {/* Gas Balancer - manage native token balances across wallets */}
-            <GasBalancerPanel wallets={selectedKeystores} />
+            {/* Gas Balancer - manage native token balances across ALL wallets */}
+            <GasBalancerPanel wallets={keystores} />
 
             {/* Travel Settings - per-wallet configuration */}
             <TravelSettingsPanel
@@ -430,6 +443,9 @@ export default function AutomationPage() {
 
             {/* Global Control Bar */}
             <div className="global-controls">
+                <span className="wallet-count-badge" title="Connected wallets">
+                    👛 {keystores.length} wallets
+                </span>
                 <span className="global-label">⚡ All Scripts (Both Chains):</span>
                 <button className="global-btn start" onClick={startAllGlobal}>
                     ▶ Start All
@@ -451,6 +467,7 @@ export default function AutomationPage() {
             <WalletResultsPanel
                 logs={logs}
                 wallets={activeWalletNames.length > 0 ? activeWalletNames : selectedKeystores}
+                walletAddresses={walletAddressMap}
                 selectedWallet={selectedWalletFilter}
                 onWalletSelect={setSelectedWalletFilter}
             />

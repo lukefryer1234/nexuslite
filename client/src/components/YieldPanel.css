@@ -220,12 +220,17 @@
 
 .yield-property {
   display: grid;
-  grid-template-columns: 80px 1fr 70px 60px;
+  grid-template-columns: 70px 1fr auto 60px 50px;
   gap: 8px;
   padding: 6px 0;
   font-size: 12px;
   color: var(--text-secondary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  align-items: center;
+}
+
+.yield-property.ineligible {
+  opacity: 0.6;
 }
 
 .yield-property:last-child {
@@ -265,5 +270,216 @@
   
   .yield-wallets {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ===== Per-Chain Display ===== */
+.yield-chains-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.yield-chain-summary {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  transition: all var(--transition-fast);
+}
+
+.yield-chain-summary:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.chain-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid;
+}
+
+.chain-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #000;
+  text-transform: uppercase;
+}
+
+.loading-dot {
+  font-size: 12px;
+}
+
+.btn-claim-all-chain {
+  margin-left: auto;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--accent-amber), #d97706);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-claim-all-chain:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.btn-claim-all-chain:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.yield-summary-compact {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.yield-stat-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 50px;
+}
+
+.yield-stat-mini .value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.yield-stat-mini .label {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+}
+
+.yield-stat-mini.highlight .value {
+  color: var(--accent-amber);
+}
+
+.yield-stat-mini.highlight-gold .value {
+  color: #fbbf24;
+}
+
+/* Wallet Cards - Updated */
+.yield-wallet-header {
+  cursor: pointer;
+  user-select: none;
+}
+
+.expand-icon {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.yield-wallet-chains {
+  padding: 8px 12px;
+}
+
+.wallet-chain-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.wallet-chain-row:last-child {
+  border-bottom: none;
+}
+
+.chain-mini-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #000;
+  min-width: 28px;
+  text-align: center;
+}
+
+.wallet-chain-row .stat {
+  color: var(--text-secondary);
+  min-width: 60px;
+}
+
+.wallet-chain-row .no-data {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.btn-claim-mini {
+  padding: 4px 8px;
+  font-size: 11px;
+  background: linear-gradient(135deg, var(--accent-green), #16a34a);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  margin-left: auto;
+}
+
+.btn-claim-mini:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btn-claim-mini:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Expanded Properties View */
+.yield-wallet-card.expanded {
+  border-color: var(--accent-purple);
+}
+
+.yield-properties-expanded {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid var(--glass-border);
+}
+
+.chain-properties {
+  margin-bottom: 16px;
+}
+
+.chain-properties:last-child {
+  margin-bottom: 0;
+}
+
+.chain-properties h4 {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+@media (max-width: 768px) {
+  .yield-chains-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .wallet-chain-row {
+    flex-wrap: wrap;
+  }
+  
+  .wallet-chain-row .stat {
+    min-width: auto;
   }
 }

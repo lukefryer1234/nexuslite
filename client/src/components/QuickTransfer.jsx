@@ -7,8 +7,9 @@ import './QuickTransfer.css';
  * QuickTransfer - Fast native coin transfers between wallets
  * Shows balances for all wallets so you can see which need funding
  */
-export default function QuickTransfer() {
-    const [wallets, setWallets] = useState([]);
+export default function QuickTransfer({ wallets: propWallets = [] }) {
+    // Filter to only wallets with addresses
+    const wallets = propWallets.filter(w => w && w.address);
     const [balances, setBalances] = useState({});
     const [fromWallet, setFromWallet] = useState('');
     const [toWallet, setToWallet] = useState('');
@@ -19,64 +20,51 @@ export default function QuickTransfer() {
     const [result, setResult] = useState(null);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Load wallets and their addresses from localStorage
-    const loadWallets = useCallback(async () => {
-        try {
-            const res = await fetch(`${API_BASE}/api/keystore/list`);
-            const data = await res.json();
-            
-            if (data.wallets) {
-                const walletsWithAddrs = data.wallets.map(w => {
-                    const addr = localStorage.getItem(`wallet_addr_${w.name}`);
-                    return { name: w.name, address: addr };
-                }).filter(w => w.address); // Only show wallets with known addresses
-                
-                setWallets(walletsWithAddrs);
-                
-                if (walletsWithAddrs.length > 0 && !fromWallet) {
-                    setFromWallet(walletsWithAddrs[0].name);
-                }
-                if (walletsWithAddrs.length > 1 && !toWallet) {
-                    setToWallet(walletsWithAddrs[1].name);
-                }
-                
-                // Fetch balances for all wallets
-                fetchAllBalances(walletsWithAddrs);
-            }
-        } catch (err) {
-            console.error('Failed to load wallets:', err);
+    // Fetch balances for all wallets
+    const fetchAllBalances = useCallback(async () => {
+        if (wallets.length === 0) {
+            setLoading(false);
+            return;
         }
-        setLoading(false);
-    }, [fromWallet, toWallet]);
-
-    const fetchAllBalances = async (walletList) => {
+        
         setRefreshing(true);
         const newBalances = {};
         
-        for (const wallet of walletList) {
-            if (wallet.address) {
-                try {
-                    const res = await fetch(`${API_BASE}/api/wallet/balance/${wallet.address}`);
-                    const data = await res.json();
-                    newBalances[wallet.name] = {
-                        pls: data.pulsechain?.balance || '0 PLS',
-                        bnb: data.bnb?.balance || '0 BNB',
-                        plsRaw: data.pulsechain?.raw || '0',
-                        bnbRaw: data.bnb?.raw || '0'
-                    };
-                } catch (e) {
-                    newBalances[wallet.name] = { pls: '? PLS', bnb: '? BNB', plsRaw: '0', bnbRaw: '0' };
-                }
+        for (const wallet of wallets) {
+            try {
+                const res = await fetch(`${API_BASE}/api/wallet/balance/${wallet.address}`);
+                const data = await res.json();
+                newBalances[wallet.name] = {
+                    pls: data.pulsechain?.balance || '0 PLS',
+                    bnb: data.bnb?.balance || '0 BNB',
+                    plsRaw: data.pulsechain?.raw || '0',
+                    bnbRaw: data.bnb?.raw || '0'
+                };
+            } catch (e) {
+                newBalances[wallet.name] = { pls: '? PLS', bnb: '? BNB', plsRaw: '0', bnbRaw: '0' };
             }
         }
         
         setBalances(newBalances);
         setRefreshing(false);
-    };
+        setLoading(false);
+    }, [wallets]);
+
+    // Set default from/to wallets when wallets change
+    useEffect(() => {
+        if (wallets.length > 0 && !fromWallet) {
+            setFromWallet(wallets[0].name);
+        }
+        if (wallets.length > 1 && !toWallet) {
+            setToWallet(wallets[1].name);
+        }
+    }, [wallets, fromWallet, toWallet]);
 
     useEffect(() => {
-        loadWallets();
-    }, [loadWallets]);
+        fetchAllBalances();
+    }, [fetchAllBalances]);
+
+
 
     const handleMaxAmount = () => {
         if (!fromWallet || !balances[fromWallet]) return;
@@ -164,7 +152,7 @@ export default function QuickTransfer() {
                     <h3>⚡ Quick Transfer</h3>
                     <button 
                         className="qt-refresh" 
-                        onClick={() => { setLoading(true); loadWallets(); }}
+                        onClick={fetchAllBalances}
                     >
                         🔄 Reload
                     </button>
@@ -183,7 +171,7 @@ export default function QuickTransfer() {
                 <h3>⚡ Quick Transfer</h3>
                 <button 
                     className="qt-refresh" 
-                    onClick={loadWallets}
+                    onClick={fetchAllBalances}
                     disabled={refreshing}
                 >
                     {refreshing ? '⟳' : '🔄'} Refresh

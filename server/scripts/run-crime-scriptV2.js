@@ -62,8 +62,20 @@ function discoverKeystores() {
 function getPassword(keystoreName) {
     const specificPassword = process.env[`${keystoreName.toUpperCase()}_PASSWORD`];
     if (specificPassword) return specificPassword;
+    
+    // Check chain-specific password (set by ScriptSchedulerService)
+    if (CHAIN_CHOICE === 1) {
+        // BNB only - check BNB password first
+        if (process.env.BNB_KEYSTORE_PASSWORD) return process.env.BNB_KEYSTORE_PASSWORD;
+    } else if (CHAIN_CHOICE === 0) {
+        // PLS only - check PLS password first
+        if (process.env.PLS_KEYSTORE_PASSWORD) return process.env.PLS_KEYSTORE_PASSWORD;
+    }
+    
+    // Global fallback
     return process.env.GLOBAL_PASSWORD || 
-           process.env.PLS_KEYSTORE_PASSWORD?.split(',')[0]?.trim() || '';
+           process.env.PLS_KEYSTORE_PASSWORD?.split(',')[0]?.trim() ||
+           process.env.BNB_KEYSTORE_PASSWORD || '';
 }
 
 // Get crime type - use global or per-wallet settings
@@ -229,7 +241,10 @@ function scheduleWallet(chainName, keystoreName, keystorePassword, configuredCri
         setTimeout(runAndReschedule, delay);
     }
 
-    runAndReschedule();
+    // Add random initial delay to prevent all scripts from executing at once (nonce conflicts)
+    const initialDelay = randomInt(5000, 60000); // 5-60 seconds random delay
+    console.log(`[${chainName}:${keystoreName}] Starting in ${(initialDelay / 1000).toFixed(0)}s (staggered start to prevent nonce conflicts)`);
+    setTimeout(runAndReschedule, initialDelay);
 }
 
 // Start scheduling for all wallets in a chain
@@ -263,3 +278,4 @@ function startScheduler() {
 }
 
 startScheduler();
+

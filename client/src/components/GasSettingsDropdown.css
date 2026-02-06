@@ -1,0 +1,276 @@
+/**
+ * GasSettingsDropdown styles
+ */
+
+.gas-settings-dropdown {
+    position: relative;
+}
+
+/* Header button */
+.gas-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gas-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.gas-btn.warning {
+    border-color: #ff9800;
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-warning {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
+    50% { box-shadow: 0 0 8px 2px rgba(255, 152, 0, 0.6); }
+}
+
+.gas-icon {
+    font-size: 16px;
+}
+
+.gas-prices {
+    display: flex;
+    gap: 8px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    font-size: 12px;
+}
+
+.pls-price, .bnb-price {
+    opacity: 0.9;
+}
+
+.warning-badge {
+    background: #ff5722;
+    color: white;
+    font-size: 10px;
+    font-weight: bold;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dropdown-arrow {
+    font-size: 10px;
+    opacity: 0.6;
+}
+
+/* Dropdown Panel */
+.gas-dropdown-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: 320px;
+    background: #1a1a2e;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    overflow: hidden;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #888;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 4px;
+}
+
+.close-btn:hover {
+    color: #fff;
+}
+
+/* Warnings Section */
+.warnings-section {
+    background: rgba(255, 152, 0, 0.1);
+    border-bottom: 1px solid rgba(255, 152, 0, 0.2);
+    padding: 12px 16px;
+}
+
+.warning-item {
+    color: #ff9800;
+    font-size: 12px;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+.warning-item.recent_failures {
+    color: #f44336;
+}
+
+.clear-btn {
+    background: rgba(255, 152, 0, 0.2);
+    border: 1px solid rgba(255, 152, 0, 0.3);
+    color: #ff9800;
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 8px;
+}
+
+.clear-btn:hover {
+    background: rgba(255, 152, 0, 0.3);
+}
+
+/* Chain Sections */
+.chain-section {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chain-section.pls {
+    background: rgba(148, 0, 211, 0.05);
+}
+
+.chain-section.bnb {
+    background: rgba(255, 193, 7, 0.05);
+}
+
+.chain-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.chain-label {
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.live-price {
+    font-size: 12px;
+    color: #888;
+}
+
+.live-price strong {
+    color: #4caf50;
+    font-family: 'Monaco', 'Menlo', monospace;
+}
+
+/* Settings Row */
+.settings-row {
+    display: flex;
+    gap: 16px;
+}
+
+.settings-row label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    font-size: 12px;
+    color: #aaa;
+}
+
+.settings-row input {
+    width: 60px;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    color: #fff;
+    font-size: 12px;
+    font-family: 'Monaco', 'Menlo', monospace;
+    text-align: right;
+}
+
+.settings-row input:focus {
+    outline: none;
+    border-color: #4caf50;
+}
+
+.unit {
+    color: #666;
+    font-size: 11px;
+}
+
+/* Panel Actions */
+.panel-actions {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.refresh-btn, .save-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.refresh-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.refresh-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.save-btn {
+    background: linear-gradient(135deg, #4caf50, #45a049);
+    border: none;
+    color: white;
+    font-weight: 600;
+}
+
+.save-btn:hover {
+    background: linear-gradient(135deg, #45a049, #3d8b40);
+}
+
+.save-btn:disabled, .refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Info Note */
+.info-note {
+    padding: 10px 16px;
+    font-size: 11px;
+    color: #666;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Loading */
+.loading {
+    padding: 24px;
+    text-align: center;
+    color: #888;
+}

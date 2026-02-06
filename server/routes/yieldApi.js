@@ -12,6 +12,9 @@ const express = require('express');
 const router = express.Router();
 const yieldClaimManager = require('../services/YieldClaimManager');
 const globalPasswordManager = require('../config/GlobalPasswordManager');
+const Logger = require('../config/Logger');
+
+const logger = new Logger('YieldAPI');
 
 // Middleware to sync password from global password manager
 function syncPassword() {
@@ -120,11 +123,11 @@ router.post('/claim', async (req, res) => {
             });
         }
         
-        console.log(`[YieldAPI] Claiming ready properties for ${address} on ${chain}...`);
+        logger.info(`Claiming ready properties for ${address}`, { chain });
         
         const result = await yieldClaimManager.claimAllReady(
             keystoreName, password, address, chain,
-            (msg) => console.log('[YieldAPI]', msg)
+            (msg) => logger.info(msg)
         );
         
         res.json(result);
@@ -159,11 +162,11 @@ router.post('/claim-all', async (req, res) => {
             });
         }
         
-        console.log(`[YieldAPI] FORCE claiming ALL properties for ${address} on ${chain}...`);
+        logger.info(`FORCE claiming ALL properties for ${address}`, { chain });
         
         const result = await yieldClaimManager.claimAllForce(
             keystoreName, password, address, chain,
-            (msg) => console.log('[YieldAPI]', msg)
+            (msg) => logger.info(msg)
         );
         
         res.json(result);
@@ -197,11 +200,11 @@ router.post('/claim-single', async (req, res) => {
             });
         }
         
-        console.log(`[YieldAPI] Claiming single property: city=${cityId}, tile=${tileId}`);
+        logger.info(`Claiming single property`, { cityId, tileId, chain });
         
         const result = await yieldClaimManager.claimProperty(
             keystoreName, password, cityId, tileId, chain,
-            (msg) => console.log('[YieldAPI]', msg)
+            (msg) => logger.info(msg)
         );
         
         res.json(result);

@@ -7,6 +7,7 @@
 
 const { spawn } = require('child_process');
 const path = require('path');
+const globalLogService = require('./GlobalLogService');
 
 // Scheduler type configurations
 // Updated to use local scripts directory for independence
@@ -362,7 +363,9 @@ class ScriptSchedulerService {
         const channel = type;
 
         child.stdout.on('data', (data) => {
-            const line = data.toString();
+            const line = data.toString().trim();
+            if (!line) return; // Skip empty lines
+            
             const logEntry = {
                 time: Date.now(),
                 text: line,
@@ -381,6 +384,18 @@ class ScriptSchedulerService {
             }
 
             this.io.emit(eventName, logEntry);
+            
+            // Forward to centralized logging
+            const source = `Script:${type}:${chain}:${walletId}`;
+            if (line.toLowerCase().includes('error') || line.toLowerCase().includes('failed')) {
+                globalLogService.error(source, line);
+            } else if (line.toLowerCase().includes('warn')) {
+                globalLogService.warn(source, line);
+            } else if (line.toLowerCase().includes('success') || line.includes('✓')) {
+                globalLogService.success(source, line);
+            } else {
+                globalLogService.info(source, line);
+            }
 
             // Track crime analytics
             if (type === 'crime' && this.crimeAnalytics) {
@@ -395,7 +410,9 @@ class ScriptSchedulerService {
         });
 
         child.stderr.on('data', (data) => {
-            const line = data.toString();
+            const line = data.toString().trim();
+            if (!line) return; // Skip empty lines
+            
             const logEntry = {
                 time: Date.now(),
                 text: line,
@@ -414,6 +431,14 @@ class ScriptSchedulerService {
             }
 
             this.io.emit(eventName, logEntry);
+            
+            // Forward to centralized logging as error/warn
+            const source = `Script:${type}:${chain}:${walletId}`;
+            if (line.toLowerCase().includes('warn')) {
+                globalLogService.warn(source, line);
+            } else {
+                globalLogService.error(source, line);
+            }
 
             if (this.metrics) {
                 this.metrics.processLog(logEntry);

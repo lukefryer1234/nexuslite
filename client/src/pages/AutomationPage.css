@@ -244,6 +244,18 @@
     gap: var(--spacing-md);
     padding-top: var(--spacing-lg);
     border-top: 1px solid var(--border-primary);
+    align-items: center;
+}
+
+.wallet-count-badge {
+    background: rgba(0, 100, 200, 0.3);
+    border: 1px solid rgba(0, 150, 255, 0.4);
+    color: #00d4ff;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
+    border-radius: 4px;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 .bulk-btn {

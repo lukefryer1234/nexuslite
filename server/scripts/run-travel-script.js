@@ -198,7 +198,10 @@ function scheduleWallet(chainName, keystoreName, keystorePassword, itemId, start
     setTimeout(runAndReschedule, delay);
   }
 
-  runAndReschedule();
+  // Add random initial delay to prevent nonce conflicts when multiple scripts start at once
+  const initialDelay = Math.floor(Math.random() * 90000); // 0-90 seconds
+  console.log(`[${chainName}] 🛫 Starting travel scheduler for ${keystoreName} in ${Math.round(initialDelay / 1000)}s`);
+  setTimeout(runAndReschedule, initialDelay);
 }
 
 // Function to start scheduling for all wallets on a chain

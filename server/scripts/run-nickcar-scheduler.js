@@ -41,8 +41,17 @@ function discoverKeystores() {
 function getPassword(keystoreName) {
     const specificPassword = process.env[`${keystoreName.toUpperCase()}_PASSWORD`];
     if (specificPassword) return specificPassword;
+    
+    // Check chain-specific password (set by ScriptSchedulerService)
+    if (CHAIN_CHOICE === 1) {
+        if (process.env.BNB_KEYSTORE_PASSWORD) return process.env.BNB_KEYSTORE_PASSWORD;
+    } else if (CHAIN_CHOICE === 0) {
+        if (process.env.PLS_KEYSTORE_PASSWORD) return process.env.PLS_KEYSTORE_PASSWORD;
+    }
+    
     return process.env.GLOBAL_PASSWORD || 
-           process.env.PLS_KEYSTORE_PASSWORD?.split(',')[0]?.trim() || '';
+           process.env.PLS_KEYSTORE_PASSWORD?.split(',')[0]?.trim() ||
+           process.env.BNB_KEYSTORE_PASSWORD || '';
 }
 
 const discoveredKeystores = discoverKeystores();

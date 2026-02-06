@@ -4,9 +4,10 @@ import API_BASE from '../config/api';
 /**
  * useWallets Hook - Adapted for Nexus Lite
  * Uses API_BASE for standalone server
+ * Supports real-time updates via Socket.IO
  */
 export function useWallets(options = {}) {
-    const { multiSelect = false, storageKey = 'selected_wallets' } = options;
+    const { multiSelect = false, storageKey = 'selected_wallets', socket = null } = options;
 
     const [wallets, setWallets] = useState([]);
     const [selectedWallet, setSelectedWallet] = useState(null);
@@ -80,6 +81,23 @@ export function useWallets(options = {}) {
     useEffect(() => {
         loadWallets();
     }, [loadWallets]);
+
+    // Listen for real-time wallet updates via Socket.IO
+    useEffect(() => {
+        if (!socket) return;
+
+        const handleWalletUpdate = (data) => {
+            console.log('[useWallets] Received wallet update:', data);
+            // Refresh wallet list when updates come in
+            loadWallets();
+        };
+
+        socket.on('wallets:updated', handleWalletUpdate);
+
+        return () => {
+            socket.off('wallets:updated', handleWalletUpdate);
+        };
+    }, [socket, loadWallets]);
 
     const selectWallet = (walletName) => {
         if (!walletName) {

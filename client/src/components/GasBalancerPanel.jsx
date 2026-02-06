@@ -180,6 +180,14 @@ export default function GasBalancerPanel({ wallets = [] }) {
                 <div className="panel-badges">
                     <span className="badge pls">💜 PLS</span>
                     <span className="badge bnb">💛 BNB</span>
+                    <button 
+                        className="refresh-btn"
+                        onClick={(e) => { e.stopPropagation(); fetchBalances(); }}
+                        disabled={loading}
+                        title="Refresh balances"
+                    >
+                        {loading ? '⏳' : '🔄'}
+                    </button>
                 </div>
                 
                 <span className="expand-icon">{expanded ? '▼' : '▶'}</span>

@@ -14,11 +14,15 @@ const compression = require('compression');
 
 const Logger = require('./config/Logger');
 const ScriptSchedulerService = require('./services/ScriptSchedulerService');
+const KeystoreSyncService = require('./services/KeystoreSyncService');
+const globalLogService = require('./services/GlobalLogService');
+const globalPasswordManager = require('./config/GlobalPasswordManager');
 const keystoreRoutes = require('./routes/keystore');
 const walletRoutes = require('./routes/wallet');
 const settingsRoutes = require('./routes/settings');
 const gasBalanceRoutes = require('./routes/gasBalanceApi');
 const yieldRoutes = require('./routes/yieldApi');
+const gameRoutes = require('./routes/gameApi');
 const { createScriptRoutes } = require('./routes/scripts');
 const { createLegacyRoutes } = require('./routes/legacy');
 
@@ -42,6 +46,9 @@ app.use(compression());
 app.use(cors());
 app.use(express.json());
 
+// Initialize Global Log Service with Socket.io
+globalLogService.init(io);
+
 // Initialize Script Scheduler Service
 const schedulerService = new ScriptSchedulerService({
     io,
@@ -50,12 +57,21 @@ const schedulerService = new ScriptSchedulerService({
     registry: null
 });
 
+// Initialize Keystore Sync Service (auto-syncs from Foundry, watches for new wallets, auto-starts scripts)
+const keystoreSyncService = new KeystoreSyncService({
+    schedulerService,
+    globalPasswordManager,
+    logger,
+    io
+});
+
 // API Routes
 app.use('/api/keystore', keystoreRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/gas-balance', gasBalanceRoutes);
 app.use('/api/yield', yieldRoutes);
+app.use('/api/game', gameRoutes);
 app.use('/api/scripts', createScriptRoutes(schedulerService));
 app.use('/api', createLegacyRoutes(schedulerService));
 
@@ -80,6 +96,19 @@ app.get('/api/health', (req, res) => {
         uptime: process.uptime(),
         memoryUsage: process.memoryUsage()
     });
+});
+
+// Logs API endpoint
+app.get('/api/logs', (req, res) => {
+    const limit = parseInt(req.query.limit) || 100;
+    const level = req.query.level || null;
+    const logs = globalLogService.getLogs(limit, level);
+    res.json({ success: true, logs, count: logs.length });
+});
+
+app.delete('/api/logs', (req, res) => {
+    globalLogService.clear();
+    res.json({ success: true, message: 'Logs cleared' });
 });
 
 // Restart endpoint - gracefully shutdown, systemd will restart
@@ -130,6 +159,7 @@ app.use((err, req, res, next) => {
 // Graceful shutdown
 process.on('SIGTERM', () => {
     logger.info('SIGTERM received, shutting down...');
+    keystoreSyncService.stop();
     schedulerService.stopAll();
     server.close(() => {
         process.exit(0);
@@ -138,6 +168,7 @@ process.on('SIGTERM', () => {
 
 process.on('SIGINT', () => {
     logger.info('SIGINT received, shutting down...');
+    keystoreSyncService.stop();
     schedulerService.stopAll();
     server.close(() => {
         process.exit(0);
@@ -146,8 +177,31 @@ process.on('SIGINT', () => {
 
 // Start server
 const PORT = process.env.PORT || 4001;
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
     logger.info(`Nexus Lite server running on port ${PORT}`);
     logger.info(`Foundry bin: ${process.env.FOUNDRY_BIN}`);
     logger.info(`Keystore path: ${process.env.KEYSTORE_PATH}`);
+    
+    // Initialize keystore sync - syncs from Foundry, watches for new wallets, auto-starts scripts
+    logger.info('Initializing keystore sync service...');
+    
+    // Wait a bit for password unlock, then initialize
+    setTimeout(async () => {
+        try {
+            await keystoreSyncService.initialize();
+            
+            // Start all scripts for all known keystores after initialization
+            if (globalPasswordManager.isUnlocked) {
+                const keystores = keystoreSyncService.getKeystores();
+                for (const keystore of keystores) {
+                    await keystoreSyncService.startScriptsForWallet(keystore);
+                }
+                logger.info('All scripts started for all keystores', { count: keystores.length });
+            } else {
+                logger.warn('Password not unlocked - scripts will start when new keystores are detected');
+            }
+        } catch (err) {
+            logger.error('Error initializing keystore sync', { error: err.message });
+        }
+    }, 5000);
 });

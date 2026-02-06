@@ -3,6 +3,8 @@ import { usePersistentState } from './hooks/usePersistentState'
 import AutomationPage from './pages/AutomationPage'
 import FoundryPage from './pages/FoundryPage'
 import SettingsPage from './pages/SettingsPage'
+import LogsPage from './pages/LogsPage'
+import GasSettingsDropdown from './components/GasSettingsDropdown'
 import API_BASE from './config/api'
 import './index.css'
 
@@ -15,6 +17,7 @@ function App() {
   const [error, setError] = useState('')
   const [restarting, setRestarting] = useState(false)
   const [lockTimeout, setLockTimeout] = usePersistentState('nexus_lock_timeout', 'never')
+  const [lockSaved, setLockSaved] = useState(false)
   const [unlockTime, setUnlockTime] = useState(null)
 
   const handleRestart = async () => {
@@ -210,6 +213,12 @@ function App() {
             🔧 Foundry Wallets
           </button>
           <button 
+            className={activeTab === 'logs' ? 'active' : ''} 
+            onClick={() => setActiveTab('logs')}
+          >
+            📋 Logs
+          </button>
+          <button 
             className={activeTab === 'settings' ? 'active' : ''} 
             onClick={() => setActiveTab('settings')}
           >
@@ -217,11 +226,16 @@ function App() {
           </button>
         </nav>
         <div className="header-controls">
+          <GasSettingsDropdown />
           <span className="status online">● Online</span>
           <select 
             className="lock-timeout-select"
             value={lockTimeout}
-            onChange={(e) => setLockTimeout(e.target.value)}
+            onChange={(e) => {
+              setLockTimeout(e.target.value)
+              setLockSaved(true)
+              setTimeout(() => setLockSaved(false), 2000)
+            }}
             title="Auto-lock timeout"
           >
             <option value="1">Lock: 1h</option>
@@ -232,6 +246,7 @@ function App() {
             <option value="24">Lock: 24h</option>
             <option value="never">Never</option>
           </select>
+          <span className={`save-indicator ${lockSaved ? 'visible' : ''}`}>✓ Saved</span>
           <button 
             className="btn-restart" 
             onClick={handleRestart}
@@ -246,6 +261,7 @@ function App() {
       <main className="app-main">
         {activeTab === 'automation' && <AutomationPage />}
         {activeTab === 'foundry' && <FoundryPage />}
+        {activeTab === 'logs' && <LogsPage />}
         {activeTab === 'settings' && <SettingsPage />}
       </main>
     </div>

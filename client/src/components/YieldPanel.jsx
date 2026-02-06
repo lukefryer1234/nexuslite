@@ -1,55 +1,61 @@
 import { useState, useEffect } from 'react'
 import API_BASE from '../config/api'
+import YieldEligibilityBadge from './YieldEligibilityBadge'
 import './YieldPanel.css'
 
-export default function YieldPanel() {
-  const [chain, setChain] = useState('pulsechain')
-  const [yieldData, setYieldData] = useState({})
-  const [loading, setLoading] = useState(false)
+const CHAINS = [
+  { id: 'pulsechain', label: 'PLS', color: '#00d4aa' },
+  { id: 'bnb', label: 'BNB', color: '#f0b90b' }
+]
+
+export default function YieldPanel({ wallets = [] }) {
+  // Store yield data per chain
+  const [yieldData, setYieldData] = useState({ pulsechain: {}, bnb: {} })
+  const [loading, setLoading] = useState({ pulsechain: false, bnb: false })
   const [claiming, setClaiming] = useState(null)
   const [config, setConfig] = useState({ claimIntervalHours: 24 })
-  const [wallets, setWallets] = useState([])
+  const [expandedWallet, setExpandedWallet] = useState(null)
 
-  // Load wallets from API
-  const loadWallets = async () => {
-    try {
-      const res = await fetch(`${API_BASE}/api/keystore/list`)
-      const json = await res.json()
-      if (json.success && json.wallets) {
-        setWallets(json.wallets.map(w => w.name))
-      }
-    } catch (err) {
-      console.error('Failed to load wallets:', err)
-    }
+  // Get address from wallet object
+  const getAddress = (wallet) => {
+    if (typeof wallet === 'object' && wallet.address) return wallet.address
+    return null
   }
 
-  // Load addresses from localStorage
-  const getAddress = (name) => {
-    return localStorage.getItem(`wallet_addr_${name}`) || ''
+  // Get wallet name
+  const getWalletName = (wallet) => {
+    if (typeof wallet === 'string') return wallet
+    return wallet.name || ''
   }
 
-  // Fetch yield status for all wallets
-  const fetchYieldStatus = async () => {
-    setLoading(true)
+  // Fetch yield status for all wallets on a specific chain
+  const fetchYieldForChain = async (chainId) => {
+    setLoading(prev => ({ ...prev, [chainId]: true }))
     const data = {}
     
     for (const wallet of wallets) {
       const address = getAddress(wallet)
+      const name = getWalletName(wallet)
       if (!address) continue
       
       try {
-        const res = await fetch(`${API_BASE}/api/yield/status/${address}?chain=${chain}`)
+        const res = await fetch(`${API_BASE}/api/yield/status/${address}?chain=${chainId}`)
         const json = await res.json()
         if (json.success) {
-          data[wallet] = json
+          data[name] = json
         }
       } catch (err) {
-        console.error(`Failed to fetch yield for ${wallet}:`, err)
+        console.error(`Failed to fetch yield for ${name} on ${chainId}:`, err)
       }
     }
     
-    setYieldData(data)
-    setLoading(false)
+    setYieldData(prev => ({ ...prev, [chainId]: data }))
+    setLoading(prev => ({ ...prev, [chainId]: false }))
+  }
+
+  // Fetch both chains
+  const fetchAllChains = () => {
+    CHAINS.forEach(chain => fetchYieldForChain(chain.id))
   }
 
   // Fetch config
@@ -66,41 +72,65 @@ export default function YieldPanel() {
   }
 
   useEffect(() => {
-    loadWallets()
     fetchConfig()
   }, [])
 
   useEffect(() => {
     if (wallets.length > 0) {
-      fetchYieldStatus()
+      fetchAllChains()
     }
-  }, [chain, wallets])
+  }, [wallets])
 
-  // Claim yields for a wallet
-  const handleClaim = async (wallet, force = false) => {
+  // Claim yields for a wallet on a chain
+  const handleClaim = async (wallet, chainId, force = false) => {
     const address = getAddress(wallet)
+    const name = getWalletName(wallet)
     if (!address) return
     
-    setClaiming(wallet)
+    setClaiming(`${name}-${chainId}`)
     try {
-      const endpoint = force ? '/api/yield/claim-all' : '/api/yield/claim'
-      const res = await fetch(`${API_BASE}${endpoint}`, {
+      const res = await fetch(`${API_BASE}/api/yield/claim`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keystoreName: wallet, address, chain })
+        body: JSON.stringify({ keystoreName: name, address, chain: chainId, force })
       })
       const json = await res.json()
-      
       if (json.success) {
-        alert(`Claimed ${json.claimed || 0} properties, ${json.failed || 0} failed`)
-        fetchYieldStatus()
-      } else {
-        alert(json.error || 'Claim failed')
+        fetchYieldForChain(chainId)
       }
     } catch (err) {
-      alert(err.message)
+      console.error(`Failed to claim for ${name}:`, err)
     }
     setClaiming(null)
+  }
+
+  // Claim all yields for a chain across all wallets
+  const handleClaimAll = async (chainId) => {
+    setClaiming(`all-${chainId}`)
+    for (const wallet of wallets) {
+      const address = getAddress(wallet)
+      const name = getWalletName(wallet)
+      const data = yieldData[chainId]?.[name]
+      if (!address || !data?.readyToClaim) continue
+      
+      try {
+        await fetch(`${API_BASE}/api/yield/claim`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ keystoreName: name, address, chain: chainId, force: false })
+        })
+      } catch (err) {
+        console.error(`Failed to claim for ${name}:`, err)
+      }
+    }
+    fetchYieldForChain(chainId)
+    setClaiming(null)
+  }
+
+  // Get display name
+  const getDisplayName = (wallet) => {
+    const name = getWalletName(wallet)
+    return name.length > 10 ? name.slice(0, 10) + '…' : name
   }
 
   // Update claim interval
@@ -117,24 +147,24 @@ export default function YieldPanel() {
     }
   }
 
-  // Calculate totals
-  const totals = Object.values(yieldData).reduce((acc, data) => {
-    acc.properties += data.totalProperties || 0
-    acc.yielding += data.yieldingProperties || 0
-    acc.ready += data.readyToClaim || 0
-    acc.estimated += data.totalEstimatedYield || 0
-    return acc
-  }, { properties: 0, yielding: 0, ready: 0, estimated: 0 })
+  // Calculate totals for a chain
+  const getTotals = (chainId) => {
+    return Object.values(yieldData[chainId] || {}).reduce((acc, data) => {
+      acc.properties += data.totalProperties || 0
+      acc.yielding += data.yieldingProperties || 0
+      acc.ready += data.readyToClaim || 0
+      acc.estimated += data.totalEstimatedYield || 0
+      return acc
+    }, { properties: 0, yielding: 0, ready: 0, estimated: 0 })
+  }
+
+  const isAnyLoading = loading.pulsechain || loading.bnb
 
   return (
     <div className="yield-panel glass-panel">
       <div className="yield-header">
         <h3>🏠 Property Yields</h3>
         <div className="yield-controls">
-          <select value={chain} onChange={(e) => setChain(e.target.value)}>
-            <option value="pulsechain">PulseChain</option>
-            <option value="bnb">BNB Chain</option>
-          </select>
           <select 
             value={config.claimIntervalHours} 
             onChange={(e) => handleIntervalChange(e.target.value)}
@@ -147,104 +177,146 @@ export default function YieldPanel() {
           </select>
           <button 
             className="btn-secondary" 
-            onClick={fetchYieldStatus}
-            disabled={loading}
+            onClick={fetchAllChains}
+            disabled={isAnyLoading}
           >
-            {loading ? '⏳' : '🔄'} Refresh
+            {isAnyLoading ? '⏳' : '🔄'} Refresh
           </button>
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="yield-summary">
-        <div className="yield-stat">
-          <span className="yield-stat-value">{totals.properties}</span>
-          <span className="yield-stat-label">Properties</span>
-        </div>
-        <div className="yield-stat">
-          <span className="yield-stat-value">{totals.yielding}</span>
-          <span className="yield-stat-label">Yielding</span>
-        </div>
-        <div className="yield-stat highlight">
-          <span className="yield-stat-value">{totals.ready}</span>
-          <span className="yield-stat-label">Ready</span>
-        </div>
-        <div className="yield-stat highlight-gold">
-          <span className="yield-stat-value">${totals.estimated.toLocaleString()}</span>
-          <span className="yield-stat-label">Est. Yield</span>
-        </div>
+      {/* Per-Chain Summary Stats */}
+      <div className="yield-chains-grid">
+        {CHAINS.map(chain => {
+          const totals = getTotals(chain.id)
+          const chainLoading = loading[chain.id]
+          
+          const isClaimingAll = claiming === `all-${chain.id}`
+          
+          return (
+            <div key={chain.id} className={`yield-chain-summary chain-${chain.id}`}>
+              <div className="chain-header" style={{ borderColor: chain.color }}>
+                <span className="chain-badge" style={{ background: chain.color }}>{chain.label}</span>
+                {chainLoading && <span className="loading-dot">⏳</span>}
+                <button
+                  className="btn-claim-all-chain"
+                  onClick={() => handleClaimAll(chain.id)}
+                  disabled={isClaimingAll || totals.ready === 0}
+                  style={{ borderColor: chain.color }}
+                >
+                  {isClaimingAll ? '⏳ Claiming...' : `Claim All ${chain.label}`}
+                </button>
+              </div>
+              <div className="yield-summary-compact">
+                <div className="yield-stat-mini">
+                  <span className="value">{totals.properties}</span>
+                  <span className="label">Props</span>
+                </div>
+                <div className="yield-stat-mini">
+                  <span className="value text-green">{totals.yielding}</span>
+                  <span className="label">Yielding</span>
+                </div>
+                <div className="yield-stat-mini highlight">
+                  <span className="value text-amber">{totals.ready}</span>
+                  <span className="label">Ready</span>
+                </div>
+                <div className="yield-stat-mini highlight-gold">
+                  <span className="value">${totals.estimated.toLocaleString()}</span>
+                  <span className="label">Est.</span>
+                </div>
+              </div>
+            </div>
+          )
+        })}
       </div>
 
-      {/* Wallet Cards */}
+      {/* Combined Wallet Cards */}
       <div className="yield-wallets">
         {wallets.map(wallet => {
-          const data = yieldData[wallet]
+          const name = getWalletName(wallet)
+          const displayName = getDisplayName(wallet)
           const address = getAddress(wallet)
+          const isExpanded = expandedWallet === name
           
           if (!address) return null
           
           return (
-            <div key={wallet} className="yield-wallet-card">
-              <div className="yield-wallet-header">
-                <span className="wallet-name">{wallet}</span>
-                <div className="wallet-actions">
-                  <button
-                    className="btn-claim"
-                    onClick={() => handleClaim(wallet, false)}
-                    disabled={claiming === wallet || !data?.readyToClaim}
-                    title="Claim ready properties"
-                  >
-                    {claiming === wallet ? '⏳' : '💰'} Claim
-                  </button>
-                  <button
-                    className="btn-claim-all"
-                    onClick={() => handleClaim(wallet, true)}
-                    disabled={claiming === wallet}
-                    title="Force claim all (override timer)"
-                  >
-                    ⚡ All
-                  </button>
-                </div>
+            <div key={name} className={`yield-wallet-card ${isExpanded ? 'expanded' : ''}`}>
+              <div 
+                className="yield-wallet-header"
+                onClick={() => setExpandedWallet(isExpanded ? null : name)}
+              >
+                <span className="wallet-name">{displayName}</span>
+                <span className="expand-icon">{isExpanded ? '▼' : '▶'}</span>
               </div>
               
-              {data ? (
-                <div className="yield-wallet-stats">
-                  <div className="stat-row">
-                    <span>Properties</span>
-                    <span>{data.totalProperties}</span>
-                  </div>
-                  <div className="stat-row">
-                    <span>Yielding</span>
-                    <span className="text-green">{data.yieldingProperties}</span>
-                  </div>
-                  <div className="stat-row">
-                    <span>Ready to Claim</span>
-                    <span className={data.readyToClaim > 0 ? 'text-amber' : ''}>{data.readyToClaim}</span>
-                  </div>
-                  <div className="stat-row highlight">
-                    <span>Est. Yield</span>
-                    <span className="text-gold">${(data.totalEstimatedYield || 0).toLocaleString()}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="yield-wallet-loading">
-                  {loading ? 'Loading...' : 'No data'}
-                </div>
-              )}
-              
-              {/* Property Details */}
-              {data?.properties?.length > 0 && (
-                <div className="yield-properties">
-                  {data.properties.filter(p => p.canYield).map(prop => (
-                    <div key={prop.tileId} className="yield-property">
-                      <span className="prop-stage">{prop.stage}</span>
-                      <span className="prop-city">{prop.cityName}</span>
-                      <span className="prop-yield">${prop.estimatedYield?.toLocaleString()}</span>
-                      <span className={`prop-status ${prop.readyToClaim ? 'ready' : ''}`}>
-                        {prop.readyToClaim ? '✓ Ready' : `${prop.hoursSinceClaim?.toFixed(0) || '?'}h`}
+              {/* Per-chain stats inline */}
+              <div className="yield-wallet-chains">
+                {CHAINS.map(chain => {
+                  const data = yieldData[chain.id]?.[name]
+                  const isClaiming = claiming === `${name}-${chain.id}`
+                  
+                  return (
+                    <div key={chain.id} className={`wallet-chain-row chain-${chain.id}`}>
+                      <span className="chain-mini-badge" style={{ background: chain.color }}>
+                        {chain.label}
                       </span>
+                      {data ? (
+                        <>
+                          <span className="stat">{data.totalProperties || 0} props</span>
+                          <span className="stat text-green">{data.yieldingProperties || 0} yielding</span>
+                          <span className={`stat ${data.readyToClaim > 0 ? 'text-amber' : ''}`}>
+                            {data.readyToClaim || 0} ready
+                          </span>
+                          <span className="stat text-gold">
+                            ${(data.totalEstimatedYield || 0).toLocaleString()}
+                          </span>
+                          <button
+                            className="btn-claim-mini"
+                            onClick={(e) => { e.stopPropagation(); handleClaim(wallet, chain.id, false) }}
+                            disabled={isClaiming || !data?.readyToClaim}
+                          >
+                            {isClaiming ? '⏳' : 'Claim'}
+                          </button>
+                        </>
+                      ) : (
+                        <span className="no-data">No data</span>
+                      )}
                     </div>
-                  ))}
+                  )
+                })}
+              </div>
+              
+              {/* Expanded property details */}
+              {isExpanded && (
+                <div className="yield-properties-expanded">
+                  {CHAINS.map(chain => {
+                    const data = yieldData[chain.id]?.[name]
+                    if (!data?.properties?.length) return null
+                    
+                    return (
+                      <div key={chain.id} className="chain-properties">
+                        <h4 style={{ color: chain.color }}>{chain.label} Properties</h4>
+                        <div className="yield-properties">
+                          {data.properties.map(prop => (
+                            <div key={prop.tileId} className={`yield-property ${prop.canYield ? '' : 'ineligible'}`}>
+                              <span className="prop-stage">{prop.stage}</span>
+                              <span className="prop-city">{prop.cityName}</span>
+                              <YieldEligibilityBadge property={prop} />
+                              {prop.canYield && (
+                                <>
+                                  <span className="prop-yield">${prop.estimatedYield?.toLocaleString()}</span>
+                                  <span className={`prop-status ${prop.readyToClaim ? 'ready' : ''}`}>
+                                    {prop.readyToClaim ? '✓ Ready' : `${prop.hoursSinceClaim?.toFixed(0) || '?'}h`}
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>

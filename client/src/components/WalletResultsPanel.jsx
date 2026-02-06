@@ -15,7 +15,13 @@ const TIMESCALES = [
  * WalletResultsPanel - Shows per-wallet statistics and results
  * Displays success/fail counts, last activity, and status for each wallet
  */
-export default function WalletResultsPanel({ logs, wallets, selectedWallet, onWalletSelect }) {
+export default function WalletResultsPanel({ logs, wallets, walletAddresses = {}, selectedWallet, onWalletSelect }) {
+    // Get last 4 digits of address
+    const getAddressSuffix = (walletName) => {
+        const addr = walletAddresses[walletName];
+        if (!addr || typeof addr !== 'string') return null;
+        return addr.slice(-4).toUpperCase();
+    };
     const [timescale, setTimescale] = usePersistentState('nexus_results_timescale', TIMESCALES[2].value); // Default to 24 hours
 
     // Filter logs by timescale
@@ -124,7 +130,12 @@ export default function WalletResultsPanel({ logs, wallets, selectedWallet, onWa
                     .filter(w => !selectedWallet || w.name === selectedWallet)
                     .map(wallet => (
                     <div key={wallet.name} className="wallet-card">
-                        <div className="wallet-name">{wallet.name}</div>
+                        <div className="wallet-name">
+                            {wallet.name.length > 7 ? wallet.name.slice(0, 7) + '…' : wallet.name}
+                            {getAddressSuffix(wallet.name) && (
+                                <span className="wallet-address-suffix">...{getAddressSuffix(wallet.name)}</span>
+                            )}
+                        </div>
                         <div className="wallet-stats">
                             <div className="stat-row">
                                 <span className="stat-label">🔫 Crime</span>

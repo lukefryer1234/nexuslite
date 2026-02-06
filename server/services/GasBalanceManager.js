@@ -8,6 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const Logger = require('../config/Logger');
+
+const logger = new Logger('GasBalance');
 
 class GasBalanceManager {
     constructor() {
@@ -46,10 +49,10 @@ class GasBalanceManager {
                 this.targetBalance = data.targetBalance || 5000;
                 this.maxToTransfer = data.maxToTransfer || 50000;
                 this.walletAddresses = data.walletAddresses || {};
-                console.log('[GasBalance] Loaded config');
+                logger.info('Loaded config');
             }
         } catch (err) {
-            console.error('[GasBalance] Failed to load config:', err.message);
+            logger.error('Failed to load config', { error: err.message });
         }
     }
 
@@ -65,7 +68,7 @@ class GasBalanceManager {
             };
             fs.writeFileSync(this.configPath, JSON.stringify(data, null, 2));
         } catch (err) {
-            console.error('[GasBalance] Failed to save config:', err.message);
+            logger.error('Failed to save config', { error: err.message });
         }
     }
 
@@ -144,7 +147,7 @@ class GasBalanceManager {
 
     async transfer(fromKeystore, toAddress, amount, chain = 'pulsechain') {
         if (!this.globalPassword) {
-            console.error('[GasBalance] Cannot transfer - no password set');
+            logger.error('Cannot transfer - no password set');
             return { success: false, error: 'No password' };
         }
 
@@ -159,7 +162,7 @@ class GasBalanceManager {
             const tempPw = `/tmp/pw-${Date.now()}`;
             fs.writeFileSync(tempPw, this.globalPassword, { mode: 0o600 });
 
-            console.log(`[GasBalance] Transferring ${amount} from ${fromKeystore} to ${toAddress}...`);
+            logger.info(`Transferring ${amount} from ${fromKeystore} to ${toAddress}`, { chain });
 
             const proc = spawn(`${foundryBin}/cast`, [
                 'send', toAddress,
@@ -180,10 +183,10 @@ class GasBalanceManager {
                 try { fs.unlinkSync(tempPw); } catch (e) {}
                 
                 if (code === 0) {
-                    console.log(`[GasBalance] Transfer successful: ${stdout.trim()}`);
+                    logger.success(`Transfer successful`, { txHash: stdout.trim() });
                     resolve({ success: true, txHash: stdout.trim() });
                 } else {
-                    console.error(`[GasBalance] Transfer failed: ${stderr}`);
+                    logger.error(`Transfer failed`, { error: stderr.slice(0, 100) });
                     resolve({ success: false, error: stderr });
                 }
             });
@@ -191,7 +194,7 @@ class GasBalanceManager {
     }
 
     async checkAndBalance(wallets, chain = 'pulsechain') {
-        console.log(`[GasBalance] Checking balances on ${chain}...`);
+        logger.info(`Checking balances on ${chain}`, { chain });
         
         // Get chain-specific thresholds
         const config = this.chainConfig[chain] || this.chainConfig.pulsechain;
@@ -205,9 +208,9 @@ class GasBalanceManager {
                 const address = await this.getWalletAddress(wallet);
                 const balance = await this.getBalance(address, chain);
                 balances.push({ wallet, address, balance });
-                console.log(`[GasBalance] ${wallet}: ${balance.toFixed(4)} ${chain === 'bnb' ? 'BNB' : 'PLS'}`);
+                logger.info(`${wallet}: ${balance.toFixed(4)} ${chain === 'bnb' ? 'BNB' : 'PLS'}`);
             } catch (err) {
-                console.error(`[GasBalance] Error checking ${wallet}:`, err.message);
+                logger.error(`Error checking ${wallet}`, { error: err.message });
             }
         }
 
@@ -216,12 +219,12 @@ class GasBalanceManager {
         const hasExcess = balances.filter(b => b.balance > targetBalance * 2);
 
         if (needsGas.length === 0) {
-            console.log('[GasBalance] All wallets have sufficient gas');
+            logger.info('All wallets have sufficient gas');
             return { success: true, transfers: [] };
         }
 
         if (hasExcess.length === 0) {
-            console.log('[GasBalance] No wallets with excess to transfer from');
+            logger.warn('No wallets with excess to transfer from');
             return { success: false, error: 'No excess funds available' };
         }
 
@@ -252,14 +255,14 @@ class GasBalanceManager {
     enable() {
         this.enabled = true;
         this.saveConfig();
-        console.log('[GasBalance] Enabled');
+        logger.info('Enabled');
         return { success: true };
     }
 
     disable() {
         this.enabled = false;
         this.saveConfig();
-        console.log('[GasBalance] Disabled');
+        logger.info('Disabled');
         return { success: true };
     }
 

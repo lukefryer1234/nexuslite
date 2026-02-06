@@ -5,6 +5,9 @@
 
 const express = require('express');
 const globalPasswordManager = require('../config/GlobalPasswordManager');
+const Logger = require('../config/Logger');
+
+const logger = new Logger('Legacy');
 
 function createLegacyRoutes(schedulerService) {
     const router = express.Router();
@@ -34,7 +37,7 @@ function createLegacyRoutes(schedulerService) {
                     return res.status(400).json({ error: 'No password provided and server is not unlocked' });
                 }
                 
-                console.log(`[Legacy] Starting ${scriptType} for ${effectiveWalletId} on ${chain}`);
+                logger.info(`Starting ${scriptType} for ${effectiveWalletId}`, { chain });
                 
                 await schedulerService.start(scriptType, chain, {
                     chain,
@@ -46,7 +49,7 @@ function createLegacyRoutes(schedulerService) {
                 
                 res.json({ success: true, message: `${scriptType} started` });
             } catch (err) {
-                console.error(`[Legacy] Start ${scriptType} error:`, err);
+                logger.error(`Start ${scriptType} error`, { error: err.message });
                 res.status(500).json({ error: err.message });
             }
         });
@@ -56,7 +59,7 @@ function createLegacyRoutes(schedulerService) {
             try {
                 const { chain, walletId } = req.body;
                 
-                console.log(`[Legacy] Stopping ${scriptType} for ${walletId} on ${chain}`);
+                logger.info(`Stopping ${scriptType} for ${walletId}`, { chain });
                 
                 schedulerService.stop(scriptType, chain, walletId);
                 res.json({ success: true, stopped: true });

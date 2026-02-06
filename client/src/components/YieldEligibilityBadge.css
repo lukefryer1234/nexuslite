@@ -1,0 +1,45 @@
+.yield-eligibility-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: help;
+  white-space: nowrap;
+}
+
+/* Operating - Active yield generation */
+.yield-eligibility-badge.status-operating {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+/* Low tier - Cannot generate yield */
+.yield-eligibility-badge.status-low-tier {
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+/* No stake - Requires MAFIA staking */
+.yield-eligibility-badge.status-no-stake {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+/* Not operating - Other reason */
+.yield-eligibility-badge.status-not-operating {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* Ineligible fallback */
+.yield-eligibility-badge.status-ineligible {
+  background: rgba(100, 116, 139, 0.1);
+  color: #64748b;
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}

@@ -1,34 +1,41 @@
 /**
- * Simple Logger for Nexus Lite
+ * Simple Logger utility for nexus-lite
+ * 
+ * Creates named loggers that route to GlobalLogService
  */
 
+const globalLogService = require('../services/GlobalLogService');
+
 class Logger {
-    constructor(name = 'NexusLite') {
-        this.name = name;
+    constructor(source) {
+        this.source = source;
     }
 
-    _format(level, message, meta = {}) {
-        const timestamp = new Date().toISOString();
-        const metaStr = Object.keys(meta).length ? ' ' + JSON.stringify(meta) : '';
-        return `[${timestamp}] [${level}] [${this.name}] ${message}${metaStr}`;
+    info(message, metadata = {}) {
+        return globalLogService.info(this.source, message, metadata);
     }
 
-    info(message, meta = {}) {
-        console.log(this._format('INFO', message, meta));
+    warn(message, metadata = {}) {
+        return globalLogService.warn(this.source, message, metadata);
     }
 
-    warn(message, meta = {}) {
-        console.warn(this._format('WARN', message, meta));
+    error(message, metadata = {}) {
+        return globalLogService.error(this.source, message, metadata);
     }
 
-    error(message, meta = {}) {
-        console.error(this._format('ERROR', message, meta));
+    debug(message, metadata = {}) {
+        return globalLogService.debug(this.source, message, metadata);
     }
 
-    debug(message, meta = {}) {
-        if (process.env.DEBUG) {
-            console.log(this._format('DEBUG', message, meta));
-        }
+    success(message, metadata = {}) {
+        return globalLogService.success(this.source, message, metadata);
+    }
+
+    /**
+     * Create a child logger with additional prefix
+     */
+    child(suffix) {
+        return new Logger(`${this.source}:${suffix}`);
     }
 }
 

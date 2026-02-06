@@ -79,6 +79,27 @@
     color: #fcd34d;
 }
 
+.gas-balancer-panel .refresh-btn {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    background: rgba(59, 130, 246, 0.15);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #60a5fa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.gas-balancer-panel .refresh-btn:hover:not(:disabled) {
+    background: rgba(59, 130, 246, 0.25);
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.gas-balancer-panel .refresh-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 .gas-balancer-panel .expand-icon {
     color: #6b7280;
     font-size: 0.75rem;

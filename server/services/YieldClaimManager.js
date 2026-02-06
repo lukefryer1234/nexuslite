@@ -12,6 +12,9 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 const { ethers } = require('ethers');
+const Logger = require('../config/Logger');
+
+const logger = new Logger('YieldClaim');
 
 // Game API endpoints
 const API_BASE = {
@@ -81,7 +84,7 @@ class YieldClaimManager {
                 this.data = JSON.parse(fs.readFileSync(this.dataPath, 'utf-8'));
             }
         } catch (err) {
-            console.error('[YieldClaim] Failed to load data:', err.message);
+            logger.error('Failed to load data', { error: err.message });
         }
     }
 
@@ -93,7 +96,7 @@ class YieldClaimManager {
             }
             fs.writeFileSync(this.dataPath, JSON.stringify(this.data, null, 2));
         } catch (err) {
-            console.error('[YieldClaim] Failed to save data:', err.message);
+            logger.error('Failed to save data', { error: err.message });
         }
     }
 
@@ -123,7 +126,7 @@ class YieldClaimManager {
         const properties = [];
         const baseUrl = API_BASE[chain];
         
-        console.log(`[YieldClaim] Fetching properties for ${address} on ${chain}...`);
+        logger.info(`Fetching properties for ${address}`, { chain });
         
         for (const [cityIdStr, cityName] of Object.entries(CITIES)) {
             const cityId = parseInt(cityIdStr);
@@ -159,11 +162,11 @@ class YieldClaimManager {
                     });
                 }
             } catch (err) {
-                console.warn(`[YieldClaim] Error fetching city ${cityName}:`, err.message);
+                logger.warn(`Error fetching city ${cityName}`, { error: err.message });
             }
         }
         
-        console.log(`[YieldClaim] Found ${properties.length} properties on ${chain}`);
+        logger.info(`Found ${properties.length} properties`, { chain });
         return properties;
     }
 
@@ -232,7 +235,7 @@ class YieldClaimManager {
      * Claim yield from a single property using cast
      */
     async claimProperty(keystoreName, password, cityId, tileId, chain = 'pulsechain', onProgress) {
-        const log = onProgress || console.log;
+        const log = onProgress || ((msg) => logger.info(msg));
         
         return new Promise(async (resolve) => {
             try {
@@ -313,7 +316,7 @@ class YieldClaimManager {
      * Claim from multiple properties
      */
     async claimMultiple(keystoreName, password, properties, chain = 'pulsechain', onProgress) {
-        const log = onProgress || console.log;
+        const log = onProgress || ((msg) => logger.info(msg));
         const results = [];
         
         log(`Starting claims for ${properties.length} properties...`);
