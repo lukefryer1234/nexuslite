@@ -1,6 +1,6 @@
 /**
  * PM2 Ecosystem Configuration for Nexus Lite
- * This ensures the server always starts on port 4000 from the correct directory
+ * This ensures the server always starts on port 4100 from the correct directory
  */
 module.exports = {
   apps: [
@@ -10,7 +10,7 @@ module.exports = {
       cwd: '/home/luke/Nexus lite',
       env: {
         NODE_ENV: 'production',
-        PORT: 4000
+        PORT: 4100
       },
       instances: 1,
       autorestart: true,

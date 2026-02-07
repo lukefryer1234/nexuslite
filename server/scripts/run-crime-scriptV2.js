@@ -36,7 +36,14 @@ function getDelayWithVariance(baseMinutes, varianceMinutes) {
     return totalMinutes * 60 * 1000; // Convert to milliseconds
 }
 
-// Auto-discover keystores from Foundry directory
+// Check if ScriptSchedulerService passed a single wallet via env vars
+// When spawned by the scheduler, each process handles ONE wallet only
+const envPlsKeystore = process.env.PLS_KEYSTORE_NAME;
+const envBnbKeystore = process.env.BNB_KEYSTORE_NAME;
+const envPlsPassword = process.env.PLS_KEYSTORE_PASSWORD;
+const envBnbPassword = process.env.BNB_KEYSTORE_PASSWORD;
+
+// Auto-discover keystores from Foundry directory (standalone mode only)
 const KEYSTORE_DIR = process.env.KEYSTORE_PATH || path.join(require('os').homedir(), '.foundry', 'keystores');
 
 function discoverKeystores() {
@@ -85,21 +92,45 @@ function getCrimeType(keystoreName) {
     return parseInt(process.env.PLS_CRIME_TYPE?.split(',')[0]?.trim() || '0');
 }
 
-// Auto-discover all keystores
-const discoveredKeystores = discoverKeystores();
+// If scheduler passed a specific wallet, use only that wallet (single-wallet mode)
+// Otherwise fall back to auto-discovery (standalone mode)
+let plsKeystoreNames, bnbKeystoreNames, plsKeystorePasswords, bnbKeystorePasswords;
+let plsCrimeTypes, bnbCrimeTypes;
 
-if (discoveredKeystores.length === 0) {
-    console.error("Error: No keystores found in " + KEYSTORE_DIR);
-    process.exit(1);
+if (envPlsKeystore && CHAIN_CHOICE === 0) {
+    // Single wallet mode - PLS
+    plsKeystoreNames = [envPlsKeystore];
+    plsKeystorePasswords = [envPlsPassword || getPassword(envPlsKeystore)];
+    plsCrimeTypes = [getCrimeType(envPlsKeystore)];
+    bnbKeystoreNames = [];
+    bnbKeystorePasswords = [];
+    bnbCrimeTypes = [];
+    console.log(`[Config] Single-wallet mode (PLS): ${envPlsKeystore}`);
+} else if (envBnbKeystore && CHAIN_CHOICE === 1) {
+    // Single wallet mode - BNB
+    plsKeystoreNames = [];
+    plsKeystorePasswords = [];
+    plsCrimeTypes = [];
+    bnbKeystoreNames = [envBnbKeystore];
+    bnbKeystorePasswords = [envBnbPassword || getPassword(envBnbKeystore)];
+    bnbCrimeTypes = [getCrimeType(envBnbKeystore)];
+    console.log(`[Config] Single-wallet mode (BNB): ${envBnbKeystore}`);
+} else {
+    // Standalone mode - discover all keystores
+    const discoveredKeystores = discoverKeystores();
+    
+    if (discoveredKeystores.length === 0) {
+        console.error("Error: No keystores found in " + KEYSTORE_DIR);
+        process.exit(1);
+    }
+    
+    plsKeystoreNames = (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
+    bnbKeystoreNames = (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
+    plsKeystorePasswords = plsKeystoreNames.map(name => getPassword(name));
+    bnbKeystorePasswords = bnbKeystoreNames.map(name => getPassword(name));
+    plsCrimeTypes = plsKeystoreNames.map(name => getCrimeType(name));
+    bnbCrimeTypes = bnbKeystoreNames.map(name => getCrimeType(name));
 }
-
-// Build keystore arrays for each chain
-const plsKeystoreNames = (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
-const bnbKeystoreNames = (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
-const plsKeystorePasswords = plsKeystoreNames.map(name => getPassword(name));
-const bnbKeystorePasswords = bnbKeystoreNames.map(name => getPassword(name));
-const plsCrimeTypes = plsKeystoreNames.map(name => getCrimeType(name));
-const bnbCrimeTypes = bnbKeystoreNames.map(name => getCrimeType(name));
 
 // Validate passwords
 if ((CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) && plsKeystorePasswords.some(p => !p)) {
@@ -125,7 +156,7 @@ const chains = {
         keystoreNames: plsKeystoreNames,
         keystorePasswords: plsKeystorePasswords,
         crimeTypes: plsCrimeTypes,
-        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "100"),
+        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "2000000"),
         gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
     },
 };
@@ -190,10 +221,21 @@ async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType
     try {
         const chain = chains[chainName];
         
-        // Build command with gas price limit (--with-gas-price caps the price we pay)
-        const gasPriceWei = chain.gasPriceGwei * 1e9;
-        const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
-        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8)" ${crimeType}`;
+        // Gas price safety check - skip if current gas is above our max limit
+        if (chain.maxGasPriceGwei > 0) {
+            const currentGas = await getCurrentGasPrice(chain.rpcUrl);
+            if (currentGas !== null) {
+                const currentGwei = Number(currentGas / BigInt(1e9));
+                if (currentGwei > chain.maxGasPriceGwei) {
+                    console.log(`[${chainName}] ⛽ Gas too high for ${keystoreName}: ${currentGwei} gwei > ${chain.maxGasPriceGwei} gwei limit - skipping`);
+                    return { success: false, gasTooHigh: true, currentGwei, maxGwei: chain.maxGasPriceGwei };
+                }
+            }
+        }
+        
+        // Submit without --with-gas-price so forge auto-detects correct gas price
+        // (using --with-gas-price can cause stuck txs if set too low for the network)
+        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8)" ${crimeType}`;
 
         const { stdout, stderr } = await execPromise(command, {
             cwd: "./foundry-crime-scripts",
@@ -206,10 +248,19 @@ async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType
         const errorMsg = error.message || '';
         
         // Check for jail status
-        if (errorMsg.toLowerCase().includes('jail')) {
+        const errLower = errorMsg.toLowerCase();
+        if (errLower.includes('jail')) {
             console.log(`[WARN] ${chainName} ${keystoreName} is in jail - skipping crime`);
+        } else if (errLower.includes('cooldown') || errLower.includes('crime cooldown')) {
+            console.log(`[WARN] ${chainName} ${keystoreName} crime on cooldown - will retry later`);
+        } else if (errLower.includes('empty revert')) {
+            console.log(`[WARN] ${chainName} ${keystoreName} crime reverted (game state) - will retry later`);
+        } else if (errLower.includes('-32000') || errLower.includes('internal_error') || errLower.includes('failed to send transaction')) {
+            console.log(`[WARN] ${chainName} ${keystoreName} RPC error (transient) - will retry later`);
+        } else if (errLower.includes('transaction failure')) {
+            console.log(`[WARN] ${chainName} ${keystoreName} transaction reverted on-chain - will retry later`);
         } else {
-            console.log(`[ERROR] ${chainName} makeCrime failed for ${keystoreName}: ${errorMsg.substring(0, 150)}`);
+            console.log(`[ERROR] ${chainName} makeCrime failed for ${keystoreName}: ${errorMsg.substring(0, 300)}`);
         }
         result = { success: false, error: errorMsg };
     }

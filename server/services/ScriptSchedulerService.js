@@ -169,7 +169,7 @@ class ScriptSchedulerService {
             // Set defaults for any missing values
             const startCity = options.startCity !== undefined ? String(options.startCity) : '0';
             const endCity = options.endCity !== undefined ? String(options.endCity) : '1';
-            const travelType = options.travelType !== undefined ? String(options.travelType) : '2';
+            const travelType = options.travelType !== undefined ? String(options.travelType) : '0'; // Default to train (0) - airplane (2) requires item NFT
             const itemId = options.itemId !== undefined ? String(options.itemId) : '0';
 
             scriptEnv[`${chain.toUpperCase()}_START_CITY`] = startCity;

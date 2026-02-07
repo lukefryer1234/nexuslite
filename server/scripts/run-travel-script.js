@@ -14,20 +14,62 @@ if (![0, 1, 2].includes(CHAIN_CHOICE)) {
   process.exit(1);
 }
 
-// Read variables based on CHAIN_CHOICE
-const plsKeystoreNames = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_KEYSTORE_NAME ? process.env.PLS_KEYSTORE_NAME.split(",").map((name) => name.trim()) : []) : [];
-const bnbKeystoreNames = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_KEYSTORE_NAME ? process.env.BNB_KEYSTORE_NAME.split(",").map((name) => name.trim()) : []) : [];
-const plsKeystorePasswords = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_KEYSTORE_PASSWORD ? process.env.PLS_KEYSTORE_PASSWORD.split(",").map((pw) => pw.trim()) : []) : [];
-const bnbKeystorePasswords = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_KEYSTORE_PASSWORD ? process.env.BNB_KEYSTORE_PASSWORD.split(",").map((pw) => pw.trim()) : []) : [];
+// Check if ScriptSchedulerService passed a single wallet via env vars
+// When spawned by the scheduler, each process handles ONE wallet only
+const envPlsKeystore = process.env.PLS_KEYSTORE_NAME;
+const envBnbKeystore = process.env.BNB_KEYSTORE_NAME;
+const envPlsPassword = process.env.PLS_KEYSTORE_PASSWORD;
+const envBnbPassword = process.env.BNB_KEYSTORE_PASSWORD;
 
-const plsItemIds = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_ITEM_IDS ? process.env.PLS_ITEM_IDS.split(",").map((id) => parseInt(id.trim()) || 0) : []) : [];
-const bnbItemIds = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_ITEM_IDS ? process.env.BNB_ITEM_IDS.split(",").map((id) => parseInt(id.trim()) || 0) : []) : [];
-const plsStartCities = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_START_CITY ? process.env.PLS_START_CITY.split(",").map((city) => parseInt(city.trim()) || 0) : []) : [];
-const bnbStartCities = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_START_CITY ? process.env.BNB_START_CITY.split(",").map((city) => parseInt(city.trim()) || 0) : []) : [];
-const plsEndCities = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_END_CITY ? process.env.PLS_END_CITY.split(",").map((city) => parseInt(city.trim()) || 0) : []) : [];
-const bnbEndCities = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_END_CITY ? process.env.BNB_END_CITY.split(",").map((city) => parseInt(city.trim()) || 0) : []) : [];
-const plsTravelTypes = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_TRAVEL_TYPE ? process.env.PLS_TRAVEL_TYPE.split(",").map((type) => parseInt(type.trim()) || 0) : []) : [];
-const bnbTravelTypes = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_TRAVEL_TYPE ? process.env.BNB_TRAVEL_TYPE.split(",").map((type) => parseInt(type.trim()) || 0) : []) : [];
+let plsKeystoreNames, bnbKeystoreNames, plsKeystorePasswords, bnbKeystorePasswords;
+let plsItemIds, bnbItemIds, plsStartCities, bnbStartCities, plsEndCities, bnbEndCities, plsTravelTypes, bnbTravelTypes;
+
+if (envPlsKeystore && CHAIN_CHOICE === 0) {
+  // Single wallet mode - PLS (spawned by ScriptSchedulerService)
+  plsKeystoreNames = [envPlsKeystore];
+  plsKeystorePasswords = [envPlsPassword || ''];
+  plsItemIds = [parseInt(process.env.PLS_ITEM_IDS || '0') || 0];
+  plsStartCities = [parseInt(process.env.PLS_START_CITY || '0') || 0];
+  plsEndCities = [parseInt(process.env.PLS_END_CITY || '1') || 0];
+  plsTravelTypes = [parseInt(process.env.PLS_TRAVEL_TYPE || '0')];
+  bnbKeystoreNames = [];
+  bnbKeystorePasswords = [];
+  bnbItemIds = [];
+  bnbStartCities = [];
+  bnbEndCities = [];
+  bnbTravelTypes = [];
+  console.log(`[Config] Single-wallet mode (PLS): ${envPlsKeystore}`);
+} else if (envBnbKeystore && CHAIN_CHOICE === 1) {
+  // Single wallet mode - BNB (spawned by ScriptSchedulerService)
+  plsKeystoreNames = [];
+  plsKeystorePasswords = [];
+  plsItemIds = [];
+  plsStartCities = [];
+  plsEndCities = [];
+  plsTravelTypes = [];
+  bnbKeystoreNames = [envBnbKeystore];
+  bnbKeystorePasswords = [envBnbPassword || ''];
+  bnbItemIds = [parseInt(process.env.BNB_ITEM_IDS || '0') || 0];
+  bnbStartCities = [parseInt(process.env.BNB_START_CITY || '0') || 0];
+  bnbEndCities = [parseInt(process.env.BNB_END_CITY || '1') || 0];
+  bnbTravelTypes = [parseInt(process.env.BNB_TRAVEL_TYPE || '0')];
+  console.log(`[Config] Single-wallet mode (BNB): ${envBnbKeystore}`);
+} else {
+  // Standalone mode - read comma-separated lists from env vars
+  plsKeystoreNames = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_KEYSTORE_NAME ? process.env.PLS_KEYSTORE_NAME.split(",").map((name) => name.trim()) : []) : [];
+  bnbKeystoreNames = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_KEYSTORE_NAME ? process.env.BNB_KEYSTORE_NAME.split(",").map((name) => name.trim()) : []) : [];
+  plsKeystorePasswords = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_KEYSTORE_PASSWORD ? process.env.PLS_KEYSTORE_PASSWORD.split(",").map((pw) => pw.trim()) : []) : [];
+  bnbKeystorePasswords = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_KEYSTORE_PASSWORD ? process.env.BNB_KEYSTORE_PASSWORD.split(",").map((pw) => pw.trim()) : []) : [];
+
+  plsItemIds = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_ITEM_IDS ? process.env.PLS_ITEM_IDS.split(",").map((id) => parseInt(id.trim()) || 0) : []) : [];
+  bnbItemIds = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_ITEM_IDS ? process.env.BNB_ITEM_IDS.split(",").map((id) => parseInt(id.trim()) || 0) : []) : [];
+  plsStartCities = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_START_CITY ? process.env.PLS_START_CITY.split(",").map((city) => parseInt(city.trim()) || 0) : []) : [];
+  bnbStartCities = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_START_CITY ? process.env.BNB_START_CITY.split(",").map((city) => parseInt(city.trim()) || 0) : []) : [];
+  plsEndCities = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_END_CITY ? process.env.PLS_END_CITY.split(",").map((city) => parseInt(city.trim()) || 0) : []) : [];
+  bnbEndCities = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_END_CITY ? process.env.BNB_END_CITY.split(",").map((city) => parseInt(city.trim()) || 0) : []) : [];
+  plsTravelTypes = CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2 ? (process.env.PLS_TRAVEL_TYPE ? process.env.PLS_TRAVEL_TYPE.split(",").map((type) => parseInt(type.trim()) || 0) : []) : [];
+  bnbTravelTypes = CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2 ? (process.env.BNB_TRAVEL_TYPE ? process.env.BNB_TRAVEL_TYPE.split(",").map((type) => parseInt(type.trim()) || 0) : []) : [];
+}
 
 // Valid cities for travel - only base cities 0-5 where nick car works
 // Extended cities (6-29) don't support nick car, so we restrict travel to base cities only
@@ -110,7 +152,7 @@ const chains = {
     startCities: plsStartCities,
     endCities: plsEndCities,
     travelTypes: plsTravelTypes,
-    maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "100"),
+    maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "2000000"),
     gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
   },
 };
@@ -185,10 +227,20 @@ async function runTravel(chainName, keystoreName, keystorePassword, destinationC
   try {
     const chain = chains[chainName];
     
-    // Build command with gas price limit (--with-gas-price caps the price we pay)
-    const gasPriceWei = chain.gasPriceGwei * 1e9;
-    const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
-    const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8,uint8,uint256)" ${destinationCity} ${travelType} ${itemId}`;
+    // Gas price safety check - skip if current gas is above our max limit
+    if (chain.maxGasPriceGwei > 0) {
+      const currentGas = await getCurrentGasPrice(chain.rpcUrl);
+      if (currentGas !== null) {
+        const currentGwei = Number(currentGas / BigInt(1e9));
+        if (currentGwei > chain.maxGasPriceGwei) {
+          console.log(`[${chainName}] ⛽ Gas too high for ${keystoreName}: ${currentGwei} gwei > ${chain.maxGasPriceGwei} gwei limit - skipping`);
+          return { success: false, gasTooHigh: true };
+        }
+      }
+    }
+    
+    // Submit without --with-gas-price so forge auto-detects correct gas price
+    const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8,uint8,uint256)" ${destinationCity} ${travelType} ${itemId}`;
 
     const { stdout, stderr } = await execPromise(command, { cwd: "./foundry-travel-scripts" });
     console.log(`[SUCCESS] ${chainName} travel to city ${destinationCity} (type: ${travelType}) executed for ${keystoreName}`);
@@ -196,10 +248,21 @@ async function runTravel(chainName, keystoreName, keystorePassword, destinationC
     return { success: true };
   } catch (error) {
     const errMsg = error.message || '';
-    if (errMsg.toLowerCase().includes('jail')) {
+    const errLower = errMsg.toLowerCase();
+    if (errLower.includes('jail')) {
       console.log(`[WARN] ${chainName} ${keystoreName} is in jail - skipping travel`);
+    } else if (errLower.includes('cooldown') || errLower.includes('travel not available')) {
+      console.log(`[WARN] ${chainName} ${keystoreName} travel not available (cooldown/already traveling) - will retry`);
+    } else if (errLower.includes('same city')) {
+      console.log(`[WARN] ${chainName} ${keystoreName} already in target city - switching destination`);
+    } else if (errLower.includes('not active')) {
+      console.log(`[WARN] ${chainName} ${keystoreName} not active user on this chain`);
+    } else if (errLower.includes('not enough allowance')) {
+      console.log(`[WARN] ${chainName} ${keystoreName} insufficient token allowance for travel`);
+    } else if (errLower.includes('-32000') || errLower.includes('internal_error')) {
+      console.log(`[WARN] ${chainName} ${keystoreName} RPC error (transient) - will retry`);
     } else {
-      console.log(`[ERROR] ${chainName} travel failed for ${keystoreName}: ${errMsg.substring(0, 100)}`);
+      console.log(`[ERROR] ${chainName} travel failed for ${keystoreName}: ${errMsg.substring(0, 300)}`);
     }
     return { success: false, error: errMsg };
   }
@@ -213,52 +276,11 @@ function scheduleWallet(chainName, keystoreName, keystorePassword, itemId, start
   async function runAndReschedule() {
     const chain = chains[chainName];
     
-    // On first run, check if player is at startCity - if not, travel there first
+    // Skip broken city detection - just start travel loop directly
+    // The contract will tell us if we're already at the destination
     if (!initializedPosition) {
-      const walletAddress = await getWalletAddress(keystoreName, keystorePassword);
-      if (walletAddress) {
-        const cityInfo = await getPlayerCity(walletAddress, chainName, chain.rpcUrl);
-        if (cityInfo.success) {
-          const cityName = CITY_NAMES[cityInfo.cityId] || `City ${cityInfo.cityId}`;
-          console.log(`[${chainName}:${keystoreName}] 📍 Current city: ${cityName} (${cityInfo.cityId})`);
-          
-          if (cityInfo.cityId !== startCity && cityInfo.cityId !== endCity) {
-            // Not at either travel point - need to travel to startCity first
-            console.log(`[${chainName}:${keystoreName}] 🎯 Not at start/end city - traveling to ${CITY_NAMES[startCity]}...`);
-            const initResult = await runTravel(chainName, keystoreName, keystorePassword, startCity, travelType, itemId);
-            
-            if (initResult.success) {
-              console.log(`[${chainName}:${keystoreName}] ✅ Initial travel to ${CITY_NAMES[startCity]} initiated`);
-              initializedPosition = true;
-              isStartCity = false; // Next destination will be endCity
-              const delay = travelDelays[travelType];
-              console.log(`[${chainName}] ✈️ Next travel for ${keystoreName} to ${CITY_NAMES[endCity]} in ${Math.round(delay / 60000)}m (after arrival)`);
-              setTimeout(runAndReschedule, delay);
-              return;
-            } else {
-              console.log(`[${chainName}:${keystoreName}] ⚠️ Initial travel failed, retrying in 15m...`);
-              setTimeout(runAndReschedule, travelDelays[3]);
-              return;
-            }
-          } else if (cityInfo.cityId === startCity) {
-            // Already at startCity - start normal loop going to endCity
-            console.log(`[${chainName}:${keystoreName}] ✅ Already at ${CITY_NAMES[startCity]} - starting travel loop`);
-            initializedPosition = true;
-            isStartCity = false; // Will travel to endCity
-          } else if (cityInfo.cityId === endCity) {
-            // Already at endCity - start normal loop going to startCity
-            console.log(`[${chainName}:${keystoreName}] ✅ Already at ${CITY_NAMES[endCity]} - starting travel loop`);
-            initializedPosition = true;
-            isStartCity = true; // Will travel to startCity
-          }
-        } else {
-          console.log(`[${chainName}:${keystoreName}] ⚠️ Could not detect city, starting normal loop...`);
-          initializedPosition = true;
-        }
-      } else {
-        console.log(`[${chainName}:${keystoreName}] ⚠️ Could not get wallet address, starting normal loop...`);
-        initializedPosition = true;
-      }
+      console.log(`[${chainName}:${keystoreName}] 🛫 Starting travel loop: ${CITY_NAMES[startCity] || startCity} ↔ ${CITY_NAMES[endCity] || endCity} (type ${travelType})`);
+      initializedPosition = true;
     }
 
     // Normal travel loop
@@ -276,13 +298,22 @@ function scheduleWallet(chainName, keystoreName, keystorePassword, itemId, start
 
       console.log(`${chainName} next travel for ${keystoreName} to ${CITY_NAMES[nextDestination] || `city ${nextDestination}`} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes)`);
     } else {
-      // If failed, retry same destination after 15 minutes (don't toggle cities)
-      delay = travelDelays[3]; // 15 minutes retry delay
-      nextDestination = destinationCity; // Same destination
-
-      console.log(
-        `${chainName} RETRY for ${keystoreName} to ${CITY_NAMES[nextDestination] || `city ${nextDestination}`} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes) due to transaction failure`
-      );
+      // If failed, check if "same city" - if so, flip destination immediately
+      const errMsg = (result.error || '').toLowerCase();
+      if (errMsg.includes('same city') || errMsg.includes('already in target')) {
+        // We're already at this city - flip to the other one and try quickly
+        isStartCity = !isStartCity;
+        delay = 30 * 1000; // 30 seconds - just flip and try the other city
+        nextDestination = isStartCity ? startCity : endCity;
+        console.log(`${chainName} ${keystoreName} already at ${CITY_NAMES[destinationCity] || destinationCity}, flipping to ${CITY_NAMES[nextDestination] || nextDestination} in 30s`);
+      } else {
+        // Other failure - retry same destination after 15 minutes
+        delay = travelDelays[3]; // 15 minutes retry delay
+        nextDestination = destinationCity;
+        console.log(
+          `${chainName} RETRY for ${keystoreName} to ${CITY_NAMES[nextDestination] || `city ${nextDestination}`} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes) due to transaction failure`
+        );
+      }
     }
 
     setTimeout(runAndReschedule, delay);

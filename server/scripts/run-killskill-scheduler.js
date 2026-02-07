@@ -20,7 +20,14 @@ const TRAIN_TYPE = parseInt(process.env.KILL_SKILL_TRAIN_TYPE || "0");
 // Cooldown: 45 minutes (+ 1 minute buffer)
 const COOLDOWN_MS = 46 * 60 * 1000;
 
-// Auto-discover keystores from Foundry directory
+// Check if ScriptSchedulerService passed a single wallet via env vars
+// When spawned by the scheduler, each process handles ONE wallet only
+const envPlsKeystore = process.env.PLS_KEYSTORE_NAME;
+const envBnbKeystore = process.env.BNB_KEYSTORE_NAME;
+const envPlsPassword = process.env.PLS_KEYSTORE_PASSWORD;
+const envBnbPassword = process.env.BNB_KEYSTORE_PASSWORD;
+
+// Auto-discover keystores from Foundry directory (standalone mode only)
 const KEYSTORE_DIR = process.env.KEYSTORE_PATH || path.join(require('os').homedir(), '.foundry', 'keystores');
 
 function discoverKeystores() {
@@ -58,11 +65,32 @@ function getPassword(keystoreName) {
            process.env.BNB_KEYSTORE_PASSWORD || '';
 }
 
-const discoveredKeystores = discoverKeystores();
-const plsKeystoreNames = (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
-const bnbKeystoreNames = (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
-const plsKeystorePasswords = plsKeystoreNames.map(name => getPassword(name));
-const bnbKeystorePasswords = bnbKeystoreNames.map(name => getPassword(name));
+// If scheduler passed a specific wallet, use only that wallet (single-wallet mode)
+// Otherwise fall back to auto-discovery (standalone mode)
+let plsKeystoreNames, bnbKeystoreNames, plsKeystorePasswords, bnbKeystorePasswords;
+
+if (envPlsKeystore && CHAIN_CHOICE === 0) {
+    // Single wallet mode - PLS
+    plsKeystoreNames = [envPlsKeystore];
+    plsKeystorePasswords = [envPlsPassword || getPassword(envPlsKeystore)];
+    bnbKeystoreNames = [];
+    bnbKeystorePasswords = [];
+    console.log(`[Config] Single-wallet mode (PLS): ${envPlsKeystore}`);
+} else if (envBnbKeystore && CHAIN_CHOICE === 1) {
+    // Single wallet mode - BNB
+    plsKeystoreNames = [];
+    plsKeystorePasswords = [];
+    bnbKeystoreNames = [envBnbKeystore];
+    bnbKeystorePasswords = [envBnbPassword || getPassword(envBnbKeystore)];
+    console.log(`[Config] Single-wallet mode (BNB): ${envBnbKeystore}`);
+} else {
+    // Standalone mode - discover all keystores
+    const discoveredKeystores = discoverKeystores();
+    plsKeystoreNames = (CHAIN_CHOICE === 0 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
+    bnbKeystoreNames = (CHAIN_CHOICE === 1 || CHAIN_CHOICE === 2) ? discoveredKeystores : [];
+    plsKeystorePasswords = plsKeystoreNames.map(name => getPassword(name));
+    bnbKeystorePasswords = bnbKeystoreNames.map(name => getPassword(name));
+}
 
 // Chain configurations with gas settings
 const chains = {
@@ -71,7 +99,7 @@ const chains = {
         script: "script/PLSKillSkill.s.sol:PLSKillSkill",
         keystoreNames: plsKeystoreNames,
         keystorePasswords: plsKeystorePasswords,
-        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "100"),
+        maxGasPriceGwei: parseInt(process.env.PLS_MAX_GAS_PRICE_GWEI || "2000000"),
         gasPriceGwei: parseInt(process.env.PLS_GAS_PRICE_GWEI || "30"),
     },
     BNB: {
@@ -100,10 +128,20 @@ async function runKillSkill(chainName, keystoreName, keystorePassword, trainType
     try {
         const chain = chains[chainName];
         
-        // Build command with gas price limit (--with-gas-price caps the price we pay)
-        const gasPriceWei = chain.gasPriceGwei * 1e9;
-        const gasFlag = chain.gasPriceGwei > 0 ? ` --with-gas-price ${gasPriceWei}` : '';
-        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}${gasFlag} --sig "run(uint8)" ${trainType}`;
+        // Gas price safety check - skip if current gas is above our max limit
+        if (chain.maxGasPriceGwei > 0) {
+            const currentGas = await getCurrentGasPrice(chain.rpcUrl);
+            if (currentGas !== null) {
+                const currentGwei = Number(currentGas / BigInt(1e9));
+                if (currentGwei > chain.maxGasPriceGwei) {
+                    console.log(`[${chainName}] ⛽ Gas too high for ${keystoreName}: ${currentGwei} gwei > ${chain.maxGasPriceGwei} gwei limit - skipping`);
+                    return { success: false, gasTooHigh: true };
+                }
+            }
+        }
+        
+        // Submit without --with-gas-price so forge auto-detects correct gas price
+        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8)" ${trainType}`;
 
         const trainNames = ['Free (bottles)', '$5000 (range)', '$30000 (trainer)'];
         console.log(`[${chainName}] 🎯 Training kill skill (${trainNames[trainType]}) for ${keystoreName}...`);
@@ -121,8 +159,18 @@ async function runKillSkill(chainName, keystoreName, keystorePassword, trainType
         console.log(`[${chainName}] ✅ Kill skill training SUCCESS for ${keystoreName}`);
         return { success: true, output: stdout };
     } catch (error) {
-        console.error(`[${chainName}] ❌ Kill skill training FAILED for ${keystoreName}:`, error.message);
-        return { success: false, error: error.message };
+        const errMsg = error.message || '';
+        const errLower = errMsg.toLowerCase();
+        if (errLower.includes('jail')) {
+            console.log(`[${chainName}] ⛓️ ${keystoreName} is in jail - skipping kill skill`);
+        } else if (errLower.includes('cooldown') || errLower.includes('cannot train yet')) {
+            console.log(`[${chainName}] ⏰ ${keystoreName} kill skill on cooldown - will retry`);
+        } else if (errLower.includes('-32000') || errLower.includes('internal_error') || errLower.includes('failed to send transaction')) {
+            console.log(`[${chainName}] 🌐 ${keystoreName} RPC error (transient) - will retry`);
+        } else {
+            console.error(`[${chainName}] ❌ Kill skill training FAILED for ${keystoreName}: ${errMsg.substring(0, 300)}`);
+        }
+        return { success: false, error: errMsg };
     }
 }
 
