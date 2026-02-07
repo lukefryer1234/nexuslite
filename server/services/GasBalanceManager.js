@@ -14,7 +14,7 @@ const logger = new Logger('GasBalance');
 
 class GasBalanceManager {
     constructor() {
-        this.enabled = false;
+        this.enabled = true;
         this.checkIntervalMs = 30 * 60 * 1000; // 30 minutes
         this.intervalId = null;
         this.configPath = path.join(__dirname, '../data/gas_balance_config.json');

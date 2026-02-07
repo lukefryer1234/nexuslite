@@ -35,6 +35,33 @@ router.get('/status', async (req, res) => {
 });
 
 /**
+ * POST /api/gas-balance/enable
+ * Enable the gas balancer
+ */
+router.post('/enable', (req, res) => {
+    try {
+        syncPassword();
+        const result = gasBalanceManager.enable();
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
+ * POST /api/gas-balance/disable
+ * Disable the gas balancer
+ */
+router.post('/disable', (req, res) => {
+    try {
+        const result = gasBalanceManager.disable();
+        res.json(result);
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
  * POST /api/gas-balance/check
  * Check all wallet balances
  * Body: { wallets: string[], chain?: string }

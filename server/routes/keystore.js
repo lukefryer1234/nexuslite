@@ -66,6 +66,17 @@ router.post('/unlock-all', async (req, res) => {
         }
         
         logger.info('Auto-loaded wallet addresses', { count: Object.keys(addresses).length });
+        
+        // Auto-enable gas balancer on unlock
+        try {
+            const gasBalanceManager = require('../services/GasBalanceManager');
+            gasBalanceManager.setGlobalPassword(password);
+            gasBalanceManager.enable();
+            logger.info('Gas balancer auto-enabled');
+        } catch (gasErr) {
+            logger.warn('Failed to auto-enable gas balancer', { error: gasErr.message });
+        }
+        
         res.json({ ...result, addresses });
     } catch (err) {
         logger.error('Failed to unlock', { error: err.message });
