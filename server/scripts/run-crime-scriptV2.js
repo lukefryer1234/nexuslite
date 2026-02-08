@@ -247,22 +247,28 @@ async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType
     } catch (error) {
         const errorMsg = error.message || '';
         
-        // Check for jail status
+        // Classify error for smarter retry scheduling
         const errLower = errorMsg.toLowerCase();
+        let classification = 'error';
         if (errLower.includes('jail')) {
             console.log(`[WARN] ${chainName} ${keystoreName} is in jail - skipping crime`);
+            classification = 'jail';
         } else if (errLower.includes('cooldown') || errLower.includes('crime cooldown')) {
             console.log(`[WARN] ${chainName} ${keystoreName} crime on cooldown - will retry later`);
-        } else if (errLower.includes('empty revert')) {
-            console.log(`[WARN] ${chainName} ${keystoreName} crime reverted (game state) - will retry later`);
+            classification = 'cooldown';
+        } else if (errLower.includes('not active')) {
+            console.log(`[WARN] ${chainName} ${keystoreName} not active on this chain`);
+            classification = 'notActive';
+        } else if (errLower.includes('empty revert') || errLower.includes('revert')) {
+            console.log(`[WARN] ${chainName} ${keystoreName} crime reverted (contract error)`);
+            classification = 'reverted';
         } else if (errLower.includes('-32000') || errLower.includes('internal_error') || errLower.includes('failed to send transaction')) {
             console.log(`[WARN] ${chainName} ${keystoreName} RPC error (transient) - will retry later`);
-        } else if (errLower.includes('transaction failure')) {
-            console.log(`[WARN] ${chainName} ${keystoreName} transaction reverted on-chain - will retry later`);
+            classification = 'rpc';
         } else {
             console.log(`[ERROR] ${chainName} makeCrime failed for ${keystoreName}: ${errorMsg.substring(0, 300)}`);
         }
-        result = { success: false, error: errorMsg };
+        result = { success: false, error: errorMsg, classification };
     }
     
     // Report to analytics (fire and forget)
@@ -281,11 +287,24 @@ function scheduleWallet(chainName, keystoreName, keystorePassword, configuredCri
 
         const result = await runMakeCrime(chainName, keystoreName, keystorePassword, crimeType);
 
-        // Calculate next delay with variance
-        const delay = getDelayWithVariance(BASE_INTERVAL_MINUTES, TIME_VARIANCE_MINUTES);
-        const nextRunTime = new Date(Date.now() + delay);
+        // Smart delay based on error classification
+        let delay;
+        const cls = result.classification || '';
+        if (result.success || cls === 'cooldown' || cls === '') {
+            // Normal cooldown - use standard interval with variance
+            delay = getDelayWithVariance(BASE_INTERVAL_MINUTES, TIME_VARIANCE_MINUTES);
+        } else if (cls === 'jail') {
+            delay = 5 * 60 * 1000; // 5 min - jail is usually short
+        } else if (cls === 'notActive') {
+            delay = 6 * 60 * 60 * 1000; // 6h - needs manual fix
+        } else if (cls === 'reverted') {
+            delay = 15 * 60 * 1000; // 15 min - retry transient
+        } else {
+            delay = getDelayWithVariance(BASE_INTERVAL_MINUTES, TIME_VARIANCE_MINUTES);
+        }
 
-        console.log(`${chainName} next run for ${keystoreName} scheduled for ${nextRunTime.toISOString()} (in ${(delay / 1000 / 60).toFixed(1)} minutes)`);
+        const nextRunTime = new Date(Date.now() + delay);
+        console.log(`${chainName} next run for ${keystoreName} scheduled for ${nextRunTime.toISOString()} (in ${(delay / 1000 / 60).toFixed(1)} minutes)${cls && cls !== 'cooldown' ? ` - ${cls}` : ''}`);
         setTimeout(runAndReschedule, delay);
     }
 

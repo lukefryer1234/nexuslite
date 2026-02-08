@@ -161,16 +161,26 @@ async function runKillSkill(chainName, keystoreName, keystorePassword, trainType
     } catch (error) {
         const errMsg = error.message || '';
         const errLower = errMsg.toLowerCase();
+        let classification = 'error';
         if (errLower.includes('jail')) {
             console.log(`[${chainName}] ⛓️ ${keystoreName} is in jail - skipping kill skill`);
+            classification = 'jail';
         } else if (errLower.includes('cooldown') || errLower.includes('cannot train yet')) {
             console.log(`[${chainName}] ⏰ ${keystoreName} kill skill on cooldown - will retry`);
+            classification = 'cooldown';
+        } else if (errLower.includes('not active')) {
+            console.log(`[${chainName}] ⚠️ ${keystoreName} not active on this chain`);
+            classification = 'notActive';
+        } else if (errLower.includes('empty revert') || errLower.includes('revert')) {
+            console.log(`[${chainName}] ⚠️ ${keystoreName} kill skill reverted (contract error)`);
+            classification = 'reverted';
         } else if (errLower.includes('-32000') || errLower.includes('internal_error') || errLower.includes('failed to send transaction')) {
             console.log(`[${chainName}] 🌐 ${keystoreName} RPC error (transient) - will retry`);
+            classification = 'rpc';
         } else {
             console.error(`[${chainName}] ❌ Kill skill training FAILED for ${keystoreName}: ${errMsg.substring(0, 300)}`);
         }
-        return { success: false, error: errMsg };
+        return { success: false, error: errMsg, classification };
     }
 }
 
@@ -179,9 +189,23 @@ function scheduleWallet(chainName, keystoreName, keystorePassword) {
     async function runAndReschedule() {
         const result = await runKillSkill(chainName, keystoreName, keystorePassword, TRAIN_TYPE);
 
-        const nextRun = new Date(Date.now() + COOLDOWN_MS);
-        console.log(`[${chainName}] 🎯 Next kill skill for ${keystoreName}: ${nextRun.toISOString()} (${Math.round(COOLDOWN_MS / 60000)}m)`);
-        setTimeout(runAndReschedule, COOLDOWN_MS);
+        // Smart delay based on error classification
+        let delay = COOLDOWN_MS;
+        const cls = result.classification || '';
+        
+        if (result.success || cls === 'cooldown' || cls === '') {
+            delay = COOLDOWN_MS; // Standard 46min cooldown
+        } else if (cls === 'jail') {
+            delay = 5 * 60 * 1000; // 5 min
+        } else if (cls === 'notActive') {
+            delay = 6 * 60 * 60 * 1000; // 6h
+        } else if (cls === 'reverted') {
+            delay = 15 * 60 * 1000; // 15 min
+        }
+
+        const nextRun = new Date(Date.now() + delay);
+        console.log(`[${chainName}] 🎯 Next kill skill for ${keystoreName}: ${nextRun.toISOString()} (${Math.round(delay / 60000)}m)${cls && cls !== 'cooldown' ? ` - ${cls}` : ''}`);
+        setTimeout(runAndReschedule, delay);
     }
 
     // Add random offset (0-90s) to avoid all wallets hitting at same time
