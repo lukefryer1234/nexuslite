@@ -307,21 +307,31 @@ async function runNickCar(chainName, keystoreName, keystorePassword) {
 
 // Schedule nick car for a wallet
 function scheduleWallet(chainName, keystoreName, keystorePassword) {
+    let consecutiveReverts = 0;
+    
     async function runAndReschedule() {
         const result = await runNickCar(chainName, keystoreName, keystorePassword);
 
-        // Delay calculation:
-        // - Jailed: 5 minutes (short retry)
-        // - Not active: 6 hours (no point retrying often)
-        // - Allowance: 2 hours (needs manual fix)
-        // - Reverted: 15 minutes (transient - retry soon)
-        // - Normal: 31 minutes (standard cooldown)
+        // Delay calculation with exponential backoff for persistent failures:
+        // - Success: 31 min (standard cooldown), reset counter
+        // - Jailed: 5 min
+        // - Cooldown: 31 min (standard)
+        // - Not active: 6h
+        // - Allowance: 2h
+        // - Reverted: exponential backoff (15m → 30m → 1h → 2h → 6h)
         let delay = COOLDOWN_MS;
         let reason = '';
         
-        if (result.jailed) {
+        if (result.success) {
+            consecutiveReverts = 0;
+            reason = 'cooldown';
+        } else if (result.jailed) {
+            consecutiveReverts = 0;
             delay = 5 * 60 * 1000; // 5 min
             reason = 'jailed';
+        } else if (result.cooldown) {
+            consecutiveReverts = 0;
+            reason = 'cooldown';
         } else if (result.notActive) {
             delay = 6 * 60 * 60 * 1000; // 6 hours
             reason = 'not active';
@@ -329,10 +339,25 @@ function scheduleWallet(chainName, keystoreName, keystorePassword) {
             delay = 2 * 60 * 60 * 1000; // 2 hours
             reason = 'needs token allowance';
         } else if (result.reverted) {
-            delay = 15 * 60 * 1000; // 15 min
-            reason = 'tx reverted';
-        } else if (result.success) {
-            reason = 'cooldown';
+            consecutiveReverts++;
+            // Exponential backoff for persistent reverts
+            if (consecutiveReverts >= 10) {
+                delay = 6 * 60 * 60 * 1000; // 6h
+            } else if (consecutiveReverts >= 5) {
+                delay = 2 * 60 * 60 * 1000; // 2h
+            } else if (consecutiveReverts >= 3) {
+                delay = 30 * 60 * 1000; // 30min
+            } else {
+                delay = 15 * 60 * 1000; // 15min
+            }
+            reason = `tx reverted (${consecutiveReverts}x consecutive)`;
+            if (consecutiveReverts === 5) {
+                console.log(`[${chainName}] ⚠️ ${keystoreName} nick car has reverted ${consecutiveReverts}x in a row - backing off to ${Math.round(delay / 60000)}m`);
+            }
+        } else {
+            // Unknown error
+            delay = 15 * 60 * 1000;
+            reason = 'error';
         }
 
         const nextRun = new Date(Date.now() + delay);

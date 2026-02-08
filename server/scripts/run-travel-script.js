@@ -222,10 +222,74 @@ const travelDelays = {
   3: 15 * 60 * 1000, // RETRY: 15 minutes for failed transactions
 };
 
+// MAFIA token addresses per chain
+const MAFIA_TOKEN = {
+  PLS: '0xa27aDe5806Ded801b93499C6fA23cc8dC9AC55EA',
+  BNB: '0x3cb3F4f43D4Be61AA92BB4EEFfe7142A13bf4111'
+};
+
+// Travel contract addresses (spenders that need allowance)
+const TRAVEL_CONTRACTS = {
+  PLS: '0x7FB6A056877c1da14a63bFECdE95ebbFa854f07F',
+  BNB: '0xa08D627E071cB4b53C6D0611d77dbCB659902AA4'
+};
+
+// Check and auto-approve MAFIA tokens for travel if needed
+async function ensureTravelAllowance(chainName, keystoreName, keystorePassword, rpcUrl) {
+  try {
+    const foundryBin = process.env.FOUNDRY_BIN || require('path').join(require('os').homedir(), '.foundry', 'bin');
+    const walletAddress = await getWalletAddress(keystoreName, keystorePassword);
+    if (!walletAddress) return { success: false, error: 'Could not get wallet address' };
+
+    const mafiaToken = MAFIA_TOKEN[chainName];
+    const travelContract = TRAVEL_CONTRACTS[chainName];
+    if (!mafiaToken || !travelContract) return { success: false, error: 'Unknown chain' };
+
+    // Check current allowance
+    const { stdout: allowanceHex } = await execPromise(
+      `${foundryBin}/cast call ${mafiaToken} "allowance(address,address)(uint256)" ${walletAddress} ${travelContract} --rpc-url ${rpcUrl}`,
+      { timeout: 10000 }
+    );
+    
+    const allowance = BigInt(allowanceHex.trim());
+    // If allowance is already large enough (> 1M tokens with 18 decimals), skip
+    const threshold = BigInt('1000000000000000000000000'); // 1M tokens
+    if (allowance >= threshold) {
+      return { success: true, alreadyApproved: true };
+    }
+
+    console.log(`[${chainName}] 💰 ${keystoreName} needs MAFIA token approval for travel, sending approve tx...`);
+
+    // Send approve for max uint256
+    const maxApproval = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+    
+    // Write password to temp file for cast send
+    const tempPwPath = `/tmp/pw_travel_approve_${Date.now()}`;
+    require('fs').writeFileSync(tempPwPath, keystorePassword, { mode: 0o600 });
+    
+    try {
+      const { stdout, stderr } = await execPromise(
+        `${foundryBin}/cast send ${mafiaToken} "approve(address,uint256)" ${travelContract} ${maxApproval} --rpc-url ${rpcUrl} --account ${keystoreName} --password-file ${tempPwPath}`,
+        { timeout: 60000 }
+      );
+      console.log(`[${chainName}] ✅ ${keystoreName} MAFIA token approved for travel: ${stdout.trim().substring(0, 66)}`);
+      return { success: true, approved: true };
+    } finally {
+      try { require('fs').unlinkSync(tempPwPath); } catch(e) {}
+    }
+  } catch (error) {
+    console.log(`[${chainName}] ⚠️ ${keystoreName} auto-approve failed: ${(error.message || '').substring(0, 100)}`);
+    return { success: false, error: error.message };
+  }
+}
+
 // Function to run travel for a single wallet
 async function runTravel(chainName, keystoreName, keystorePassword, destinationCity, travelType, itemId) {
   try {
     const chain = chains[chainName];
+    
+    // Auto-approve MAFIA tokens if needed (one-time operation)
+    await ensureTravelAllowance(chainName, keystoreName, keystorePassword, chain.rpcUrl);
     
     // Gas price safety check - skip if current gas is above our max limit
     if (chain.maxGasPriceGwei > 0) {
