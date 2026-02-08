@@ -24,18 +24,22 @@ const MAP_CONTRACTS = {
     BNB: '0x1c88060e4509c59b4064A7a9818f64AeC41ef19E'
 };
 
-// Get wallet address from keystore
+// Get wallet address from keystore (uses temp password file to avoid shell expansion of special chars like !!)
 async function getWalletAddress(keystoreName, password) {
+    const tempPwPath = `/tmp/pw_addr_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     try {
         const foundryBin = process.env.FOUNDRY_BIN || path.join(require('os').homedir(), '.foundry', 'bin');
+        require('fs').writeFileSync(tempPwPath, password, { mode: 0o600 });
         const { stdout } = await execPromise(
-            `${foundryBin}/cast wallet address --account ${keystoreName} --password "${password}"`,
+            `${foundryBin}/cast wallet address --account ${keystoreName} --password-file ${tempPwPath}`,
             { timeout: 10000 }
         );
         return stdout.trim();
     } catch (err) {
         console.error(`[Config] Failed to get address for ${keystoreName}:`, err.message?.substring(0, 80));
         return null;
+    } finally {
+        try { require('fs').unlinkSync(tempPwPath); } catch(e) {}
     }
 }
 
@@ -96,7 +100,10 @@ async function travelToCity(chainName, keystoreName, keystorePassword, targetCit
         }
         
         // Submit without --with-gas-price so forge auto-detects correct gas price
-        const command = `forge script ${TRAVEL_SCRIPTS[chainName]} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8,uint8,uint256)" ${targetCity} ${travelType} ${itemId}`;
+        // Use --password-file to avoid shell expansion issues with special chars (e.g. !!)
+        const tempPwTravel = `/tmp/pw_nctravel_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        require('fs').writeFileSync(tempPwTravel, keystorePassword, { mode: 0o600 });
+        const command = `forge script ${TRAVEL_SCRIPTS[chainName]} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password-file ${tempPwTravel} --sig "run(uint8,uint8,uint256)" ${targetCity} ${travelType} ${itemId}`;
 
         console.log(`[${chainName}:${keystoreName}] ✈️ Auto-traveling to ${CITY_NAMES[targetCity]}...`);
         const { stdout, stderr } = await execPromise(command, { 
@@ -123,6 +130,8 @@ async function travelToCity(chainName, keystoreName, keystorePassword, targetCit
             console.error(`[${chainName}:${keystoreName}] ❌ Auto-travel failed: ${errMsg.substring(0, 200)}`);
         }
         return { success: false, error: errMsg };
+    } finally {
+        try { require('fs').unlinkSync(tempPwTravel); } catch(e) {}
     }
 }
 
@@ -257,12 +266,18 @@ async function runNickCar(chainName, keystoreName, keystorePassword) {
         }
         
         // Submit without --with-gas-price so forge auto-detects correct gas price
-        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword}`;
+        // Use --password-file to avoid shell expansion issues with special chars (e.g. !!)
+        const tempPwNick = `/tmp/pw_nickcar_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        require('fs').writeFileSync(tempPwNick, keystorePassword, { mode: 0o600 });
+        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password-file ${tempPwNick}`;
 
         console.log(`[${chainName}] 🚗 Attempting to nick car for ${keystoreName}...`);
         const { stdout, stderr } = await execPromise(command, {
             cwd: "./foundry-crime-scripts",
         });
+
+        // Clean up temp password file
+        try { require('fs').unlinkSync(tempPwNick); } catch(e) {}
 
         // Check for jail
         if (stdout.includes("jail") || stderr.includes("jail")) {

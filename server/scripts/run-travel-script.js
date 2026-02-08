@@ -182,18 +182,22 @@ const MAP_CONTRACTS = {
   BNB: '0x1c88060e4509c59b4064A7a9818f64AeC41ef19E'
 };
 
-// Get wallet address from keystore
+// Get wallet address from keystore (uses temp password file to avoid shell expansion of special chars like !!)
 async function getWalletAddress(keystoreName, password) {
+  const tempPwPath = `/tmp/pw_addr_${Date.now()}_${Math.random().toString(36).slice(2)}`;
   try {
     const foundryBin = process.env.FOUNDRY_BIN || require('path').join(require('os').homedir(), '.foundry', 'bin');
+    require('fs').writeFileSync(tempPwPath, password, { mode: 0o600 });
     const { stdout } = await execPromise(
-      `${foundryBin}/cast wallet address --account ${keystoreName} --password "${password}"`,
+      `${foundryBin}/cast wallet address --account ${keystoreName} --password-file ${tempPwPath}`,
       { timeout: 10000 }
     );
     return stdout.trim();
   } catch (err) {
     console.error(`[Config] Failed to get address for ${keystoreName}:`, err.message?.substring(0, 80));
     return null;
+  } finally {
+    try { require('fs').unlinkSync(tempPwPath); } catch(e) {}
   }
 }
 
@@ -306,12 +310,19 @@ async function runTravel(chainName, keystoreName, keystorePassword, destinationC
     }
     
     // Submit without --with-gas-price so forge auto-detects correct gas price
-    const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8,uint8,uint256)" ${destinationCity} ${travelType} ${itemId}`;
+    // Use --password-file to avoid shell expansion issues with special chars (e.g. !!)
+    const tempPwPath = `/tmp/pw_travel_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    require('fs').writeFileSync(tempPwPath, keystorePassword, { mode: 0o600 });
+    try {
+    const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password-file ${tempPwPath} --sig "run(uint8,uint8,uint256)" ${destinationCity} ${travelType} ${itemId}`;
 
     const { stdout, stderr } = await execPromise(command, { cwd: "./foundry-travel-scripts" });
     console.log(`[SUCCESS] ${chainName} travel to city ${destinationCity} (type: ${travelType}) executed for ${keystoreName}`);
 
     return { success: true };
+    } finally {
+      try { require('fs').unlinkSync(tempPwPath); } catch(e) {}
+    }
   } catch (error) {
     const errMsg = error.message || '';
     const errLower = errMsg.toLowerCase();

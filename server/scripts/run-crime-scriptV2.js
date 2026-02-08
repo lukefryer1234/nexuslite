@@ -234,8 +234,11 @@ async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType
         }
         
         // Submit without --with-gas-price so forge auto-detects correct gas price
-        // (using --with-gas-price can cause stuck txs if set too low for the network)
-        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8)" ${crimeType}`;
+        // Use --password-file to avoid shell expansion issues with special chars (e.g. !!)
+        const tempPwPath = `/tmp/pw_crime_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        require('fs').writeFileSync(tempPwPath, keystorePassword, { mode: 0o600 });
+        try {
+        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password-file ${tempPwPath} --sig "run(uint8)" ${crimeType}`;
 
         const { stdout, stderr } = await execPromise(command, {
             cwd: "./foundry-crime-scripts",
@@ -244,6 +247,9 @@ async function runMakeCrime(chainName, keystoreName, keystorePassword, crimeType
         // Log SUCCESS explicitly for GlobalLogService to capture
         console.log(`[SUCCESS] ${chainName} makeCrime (crimeType: ${crimeType}) executed successfully for ${keystoreName}`);
         result = { success: true, output: stdout };
+        } finally {
+            try { require('fs').unlinkSync(tempPwPath); } catch(e) {}
+        }
     } catch (error) {
         const errorMsg = error.message || '';
         

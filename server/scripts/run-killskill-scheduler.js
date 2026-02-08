@@ -141,7 +141,11 @@ async function runKillSkill(chainName, keystoreName, keystorePassword, trainType
         }
         
         // Submit without --with-gas-price so forge auto-detects correct gas price
-        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password ${keystorePassword} --sig "run(uint8)" ${trainType}`;
+        // Use --password-file to avoid shell expansion issues with special chars (e.g. !!)
+        const tempPwPath = `/tmp/pw_killskill_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        require('fs').writeFileSync(tempPwPath, keystorePassword, { mode: 0o600 });
+        try {
+        const command = `forge script ${chain.script} --rpc-url ${chain.rpcUrl} --broadcast --account ${keystoreName} --password-file ${tempPwPath} --sig "run(uint8)" ${trainType}`;
 
         const trainNames = ['Free (bottles)', '$5000 (range)', '$30000 (trainer)'];
         console.log(`[${chainName}] 🎯 Training kill skill (${trainNames[trainType]}) for ${keystoreName}...`);
@@ -158,6 +162,9 @@ async function runKillSkill(chainName, keystoreName, keystorePassword, trainType
 
         console.log(`[${chainName}] ✅ Kill skill training SUCCESS for ${keystoreName}`);
         return { success: true, output: stdout };
+        } finally {
+            try { require('fs').unlinkSync(tempPwPath); } catch(e) {}
+        }
     } catch (error) {
         const errMsg = error.message || '';
         const errLower = errMsg.toLowerCase();
