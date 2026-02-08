@@ -240,35 +240,9 @@ async function runNickCar(chainName, keystoreName, keystorePassword) {
     try {
         const chain = chains[chainName];
         
-        // City detection - nick car only works in cities 0-5
-        const walletAddress = await getWalletAddress(keystoreName, keystorePassword);
-        if (walletAddress) {
-            const cityInfo = await getPlayerCity(walletAddress, chainName, chain.rpcUrl);
-            if (cityInfo.success) {
-                if (cityInfo.cityId > 5) {
-                    console.log(`[${chainName}:${keystoreName}] 🏙️ In ${cityInfo.cityName} (city ${cityInfo.cityId}) - need to travel to valid city`);
-                    
-                    // Auto-travel to New York (city 0)
-                    const travelResult = await travelToCity(chainName, keystoreName, keystorePassword, DEFAULT_TARGET_CITY);
-                    if (travelResult.success) {
-                        // Return traveling status with delay
-                        return { 
-                            success: false, 
-                            traveling: true, 
-                            travelDelay: travelResult.delay,
-                            targetCity: travelResult.targetCity,
-                            targetCityName: travelResult.targetCityName
-                        };
-                    } else {
-                        // Travel failed, retry later
-                        return { success: false, wrongCity: true, cityId: cityInfo.cityId, cityName: cityInfo.cityName };
-                    }
-                }
-                console.log(`[${chainName}:${keystoreName}] 📍 City: ${cityInfo.cityName} (${cityInfo.cityId}) ✓`);
-            } else {
-                console.log(`[${chainName}:${keystoreName}] ⚠️ Could not detect city, attempting anyway...`);
-            }
-        }
+        // Skip city detection - the MAP contract getPlayerCity selector is broken
+        // and returns garbage city IDs (e.g. 29). Just attempt nick car directly.
+        // The contract revert message will tell us if we're in the wrong city.
         
         // Gas price safety check - skip if current gas is above our max limit
         if (chain.maxGasPriceGwei > 0) {
@@ -311,9 +285,19 @@ async function runNickCar(chainName, keystoreName, keystorePassword) {
         if (errLower.includes('jail')) {
             console.log(`[${chainName}] ⛓️ ${keystoreName} is in jail - waiting for release`);
             return { success: false, jailed: true };
-        } else if (errLower.includes('cooldown') || errLower.includes('empty revert')) {
+        } else if (errLower.includes('cooldown')) {
             console.log(`[${chainName}] ⏰ ${keystoreName} nick car on cooldown`);
             return { success: false, cooldown: true };
+        } else if (errLower.includes('not active')) {
+            console.log(`[${chainName}] ⚠️ ${keystoreName} not active on this chain - skipping`);
+            return { success: false, notActive: true };
+        } else if (errLower.includes('not enough allowance') || errLower.includes('insufficient')) {
+            console.log(`[${chainName}] 💰 ${keystoreName} insufficient token allowance for nick car`);
+            return { success: false, allowance: true };
+        } else if (errLower.includes('empty revert') || errLower.includes('-32000')) {
+            // Empty revert = contract call failed (NOT cooldown)
+            console.log(`[${chainName}] ⚠️ ${keystoreName} nick car tx reverted (contract error, not cooldown)`);
+            return { success: false, reverted: true };
         } else {
             console.error(`[${chainName}] ❌ Nick car FAILED for ${keystoreName}: ${errMsg.substring(0, 300)}`);
         }
@@ -328,8 +312,9 @@ function scheduleWallet(chainName, keystoreName, keystorePassword) {
 
         // Delay calculation:
         // - Jailed: 5 minutes (short retry)
-        // - Traveling: use travel delay + buffer (wait for travel to complete)
-        // - Wrong city (travel failed): 60 minutes retry
+        // - Not active: 6 hours (no point retrying often)
+        // - Allowance: 2 hours (needs manual fix)
+        // - Reverted: 15 minutes (transient - retry soon)
         // - Normal: 31 minutes (standard cooldown)
         let delay = COOLDOWN_MS;
         let reason = '';
@@ -337,13 +322,15 @@ function scheduleWallet(chainName, keystoreName, keystorePassword) {
         if (result.jailed) {
             delay = 5 * 60 * 1000; // 5 min
             reason = 'jailed';
-        } else if (result.traveling) {
-            // Use travel delay + 5 minute buffer to ensure we're at destination
-            delay = result.travelDelay + (5 * 60 * 1000);
-            reason = `traveling to ${result.targetCityName}`;
-        } else if (result.wrongCity) {
-            delay = 60 * 60 * 1000; // 1 hour - travel failed
-            reason = 'travel failed';
+        } else if (result.notActive) {
+            delay = 6 * 60 * 60 * 1000; // 6 hours
+            reason = 'not active';
+        } else if (result.allowance) {
+            delay = 2 * 60 * 60 * 1000; // 2 hours
+            reason = 'needs token allowance';
+        } else if (result.reverted) {
+            delay = 15 * 60 * 1000; // 15 min
+            reason = 'tx reverted';
         } else if (result.success) {
             reason = 'cooldown';
         }

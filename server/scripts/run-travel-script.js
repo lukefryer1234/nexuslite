@@ -249,22 +249,31 @@ async function runTravel(chainName, keystoreName, keystorePassword, destinationC
   } catch (error) {
     const errMsg = error.message || '';
     const errLower = errMsg.toLowerCase();
+    
+    // Classify the error for smarter retry scheduling
+    let classification = 'error';
     if (errLower.includes('jail')) {
       console.log(`[WARN] ${chainName} ${keystoreName} is in jail - skipping travel`);
+      classification = 'jail';
     } else if (errLower.includes('cooldown') || errLower.includes('travel not available')) {
       console.log(`[WARN] ${chainName} ${keystoreName} travel not available (cooldown/already traveling) - will retry`);
+      classification = 'cooldown';
     } else if (errLower.includes('same city')) {
       console.log(`[WARN] ${chainName} ${keystoreName} already in target city - switching destination`);
+      classification = 'sameCity';
     } else if (errLower.includes('not active')) {
       console.log(`[WARN] ${chainName} ${keystoreName} not active user on this chain`);
+      classification = 'notActive';
     } else if (errLower.includes('not enough allowance')) {
       console.log(`[WARN] ${chainName} ${keystoreName} insufficient token allowance for travel`);
+      classification = 'allowance';
     } else if (errLower.includes('-32000') || errLower.includes('internal_error')) {
       console.log(`[WARN] ${chainName} ${keystoreName} RPC error (transient) - will retry`);
+      classification = 'rpc';
     } else {
       console.log(`[ERROR] ${chainName} travel failed for ${keystoreName}: ${errMsg.substring(0, 300)}`);
     }
-    return { success: false, error: errMsg };
+    return { success: false, error: errMsg, classification };
   }
 }
 
@@ -298,20 +307,37 @@ function scheduleWallet(chainName, keystoreName, keystorePassword, itemId, start
 
       console.log(`${chainName} next travel for ${keystoreName} to ${CITY_NAMES[nextDestination] || `city ${nextDestination}`} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes)`);
     } else {
-      // If failed, check if "same city" - if so, flip destination immediately
+      // Check error classification for smarter delays
       const errMsg = (result.error || '').toLowerCase();
-      if (errMsg.includes('same city') || errMsg.includes('already in target')) {
+      const cls = result.classification || '';
+      
+      if (cls === 'sameCity' || errMsg.includes('same city') || errMsg.includes('already in target')) {
         // We're already at this city - flip to the other one and try quickly
         isStartCity = !isStartCity;
-        delay = 30 * 1000; // 30 seconds - just flip and try the other city
+        delay = 30 * 1000; // 30 seconds
         nextDestination = isStartCity ? startCity : endCity;
         console.log(`${chainName} ${keystoreName} already at ${CITY_NAMES[destinationCity] || destinationCity}, flipping to ${CITY_NAMES[nextDestination] || nextDestination} in 30s`);
+      } else if (cls === 'notActive') {
+        // Not active on this chain - long delay, no point retrying often
+        delay = 6 * 60 * 60 * 1000; // 6 hours
+        nextDestination = destinationCity;
+        console.log(`${chainName} ${keystoreName} not active - next retry in 6h`);
+      } else if (cls === 'allowance') {
+        // Needs token allowance - manual fix needed
+        delay = 2 * 60 * 60 * 1000; // 2 hours
+        nextDestination = destinationCity;
+        console.log(`${chainName} ${keystoreName} needs token allowance - next retry in 2h`);
+      } else if (cls === 'jail') {
+        // In jail - short retry
+        delay = 5 * 60 * 1000; // 5 minutes
+        nextDestination = destinationCity;
+        console.log(`${chainName} ${keystoreName} in jail - next retry in 5m`);
       } else {
-        // Other failure - retry same destination after 15 minutes
+        // Other failure (cooldown, RPC, unknown) - retry same destination after 15 minutes
         delay = travelDelays[3]; // 15 minutes retry delay
         nextDestination = destinationCity;
         console.log(
-          `${chainName} RETRY for ${keystoreName} to ${CITY_NAMES[nextDestination] || `city ${nextDestination}`} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes) due to transaction failure`
+          `${chainName} RETRY for ${keystoreName} to ${CITY_NAMES[nextDestination] || `city ${nextDestination}`} scheduled for ${new Date(Date.now() + delay).toISOString()} (in ${delay / 1000 / 60} minutes) due to ${cls || 'transaction failure'}`
         );
       }
     }
