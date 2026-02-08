@@ -396,8 +396,13 @@ function scheduleWallet(chainName, keystoreName, keystorePassword, itemId, start
         delay = 5 * 60 * 1000; // 5 minutes
         nextDestination = destinationCity;
         console.log(`${chainName} ${keystoreName} in jail - next retry in 5m`);
+      } else if (cls === 'cooldown') {
+        // Cooldown depends on vehicle type - wait the full travel duration
+        delay = travelDelays[travelType] || travelDelays[0];
+        nextDestination = destinationCity;
+        console.log(`${chainName} ${keystoreName} on cooldown - next retry in ${Math.round(delay / 60000)}m (${['train','car','airplane'][travelType] || 'train'} cooldown)`);
       } else {
-        // Other failure (cooldown, RPC, unknown) - retry same destination after 15 minutes
+        // Other failure (RPC, unknown) - retry after 15 minutes
         delay = travelDelays[3]; // 15 minutes retry delay
         nextDestination = destinationCity;
         console.log(
