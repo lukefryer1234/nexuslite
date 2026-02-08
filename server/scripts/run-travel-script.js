@@ -246,12 +246,14 @@ async function ensureTravelAllowance(chainName, keystoreName, keystorePassword, 
     if (!mafiaToken || !travelContract) return { success: false, error: 'Unknown chain' };
 
     // Check current allowance
-    const { stdout: allowanceHex } = await execPromise(
+    const { stdout: allowanceRaw } = await execPromise(
       `${foundryBin}/cast call ${mafiaToken} "allowance(address,address)(uint256)" ${walletAddress} ${travelContract} --rpc-url ${rpcUrl}`,
       { timeout: 10000 }
     );
     
-    const allowance = BigInt(allowanceHex.trim());
+    // cast call outputs "NUMBER [SCIENTIFIC]" e.g. "12345 [1.234e4]" — extract just the number
+    const allowanceStr = allowanceRaw.trim().split(/[\s\[]/)[0];
+    const allowance = BigInt(allowanceStr || '0');
     // If allowance is already large enough (> 1M tokens with 18 decimals), skip
     const threshold = BigInt('1000000000000000000000000'); // 1M tokens
     if (allowance >= threshold) {
