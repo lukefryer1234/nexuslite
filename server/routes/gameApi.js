@@ -11,9 +11,12 @@ const Logger = require('../config/Logger');
 const logger = new Logger('GameAPI');
 
 // Game API base URLs
+// NOTE: Player/cooldown endpoints don't exist on any known backend.
+// backendpls/bnb.playmafia.io only has /map/owned/{cityId}.
+// Cooldown/jail data would need to come from on-chain reads.
 const GAME_API_URLS = {
-    pulsechain: 'https://api.mafiawars.dev',
-    bnb: 'https://bnbapi.mafiawars.dev'
+    pulsechain: 'https://backendpls.playmafia.io',
+    bnb: 'https://backendbnb.playmafia.io'
 };
 
 // Cooldown durations in seconds
